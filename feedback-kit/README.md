@@ -73,6 +73,41 @@ Set these on `:root` or `.fk`; the defaults are neutral greys and green:
 
 If the app has a service worker that caches fonts, it must not answer a CORS request with an opaque copy cached from a stylesheet `<link>`. `embedFonts` reads the stylesheet with CORS and can't use such a copy. See `staleWhileRevalidate` in [Ultimate Playbook's `sw.js`](https://github.com/bremondr/ultimate-playbook/blob/main/sw.js).
 
+## Setting it up in a project
+
+With the kit copied into the project (see [web-kit's setup guide](../docs/setup-project.md)), usually at `js/vendor/feedback-kit/`:
+
+1. **The label.** Create the label the issues get, once per repository:
+   ```sh
+   gh label create feedback --repo <owner>/<project> --color d4a72c --description "Sent from the app's feedback link"
+   ```
+   If it's missing, GitHub drops it from the new issue without saying so.
+2. **The styles.** Link `js/vendor/feedback-kit/feedback-kit.css`, and set the `--fk-*` properties to the project's colours and fonts (see Theming). Set `--fk-z` above anything else that covers the page.
+3. **The adapter.** Write one project file, for example `js/features/feedback.js`, that calls `createFeedback` with:
+   - `repo` and `labels`;
+   - `picture`: what to draw. For an SVG, `svgPicture(svg, {fonts, vars})`. Pass the fonts the SVG uses through `embedFonts`, and `vars` for any CSS variables used inside it;
+   - `describe`: what is on screen (`subtitle`, `fileName`, and `issue` with `title`, `rows` and `sections`). Most useful is a section with a link that reopens exactly this view, if the app can make one. Give it a `fallback` text, because long links may not fit.
+   Keep this file out of the vendored folder.
+4. **The button.** Call `feedback.open()` from a tap: the kit copies the picture to the clipboard during that tap. Pause any animation first if the picture should match what the person saw.
+5. **Offline.** If a service worker keeps a list of files, add the kit's five files (`kit.js`, `picture.js`, `sketch.js`, `issue.js`, `feedback-kit.css`). If it also caches web fonts, see Offline below.
+6. **Preview builds (optional).** A preview banner or a debug page can open the panel without importing the app. The app listens for an event and cancels it to show it handled it:
+   ```js
+   document.addEventListener('myapp:feedback', e => { e.preventDefault(); feedback.open(); });
+   ```
+   The banner dispatches `new CustomEvent('myapp:feedback', {cancelable: true})`. If nothing cancelled it, the banner can fall back to a plain new-issue link. Ultimate Playbook's [`tools/preview-runtime.js`](https://github.com/bremondr/ultimate-playbook/blob/main/tools/preview-runtime.js) does this.
+
+[Ultimate Playbook's adapter](https://github.com/bremondr/ultimate-playbook/blob/main/js/features/feedback.js) is a complete example: the field SVG as the picture, the drill and step, and a link that reopens the drill at that moment.
+
+### Working from the issues
+
+Add something like this to the project's CLAUDE.md, so a Claude Code session knows what to do with them:
+
+```markdown
+Feedback from the app arrives as issues with the `feedback` label ("fix the open feedback issues" means those).
+Each one has a table of what was on screen (screen size, orientation, theme, browser, page) and, where the app
+makes one, a link that reopens the same view. The pasted picture shows only what the app drew, not the whole screen.
+```
+
 ## Limits
 
 - **Only what the page can draw.** A page can't take a screenshot of itself on iPad Safari, so the picture is the SVG (or canvas) you give it, not the whole screen.
