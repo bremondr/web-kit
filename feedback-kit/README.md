@@ -16,7 +16,7 @@ It began in [Ultimate Playbook](https://github.com/bremondr/ultimate-playbook) b
 | File | What it does |
 |---|---|
 | `kit.js` | `createFeedback(options)`: the panel, the clipboard, Share and Save, the device's rows in the issue |
-| `picture.js` | `svgPicture(svg, options)`: a PNG-ready canvas of an SVG as it looks now. `embedFonts(...)`: web fonts inlined for it |
+| `picture.js` | `svgPicture(svg, options)`: a PNG-ready canvas of an SVG as it looks now. `embedFonts({stylesheet, family, unicode})`: web fonts inlined for it, from a stylesheet on Google Fonts or the app's own (`unicode` picks subsets by `unicode-range`, Latin by default; rules without one are always kept) |
 | `sketch.js` | `createSketch(canvas)`: drawing on a picture |
 | `issue.js` | `issueUrl(issue)`: the new-issue address, kept under GitHub's length limit. No DOM, so it runs in Node |
 | `feedback-kit.css` | the panel; themed with `--fk-*` custom properties |

@@ -78,7 +78,7 @@ try {
 }
 
 async function checkFeedback(page, where, scheme, size) {
-  await page.waitForFunction(() => /inlined/.test(document.getElementById('font-status').textContent), null, { timeout: 5000 })
+  await page.waitForFunction(() => /^Bungee, inlined/.test(document.getElementById('font-status').textContent), null, { timeout: 5000 })
     .catch(() => fail(where, 'the web font was not inlined for the picture'));
 
   // where the picked bar and the sky are, as fractions of the chart, to look for them in the picture
@@ -93,6 +93,14 @@ async function checkFeedback(page, where, scheme, size) {
   await panel.waitFor({ state: 'visible' });
   // the canvas shows once the picture is ready, and "Making the picture…" goes
   await page.locator('.fk-wait').waitFor({ state: 'hidden', timeout: 5000 }).catch(() => fail(where, 'no picture in the panel'));
+
+  // a hidden canvas is really hidden (the kit's own display rule once won over the hidden attribute)
+  const hiddenShows = await page.evaluate(() => {
+    const c = document.querySelector('.fk-canvas'), was = c.hidden;
+    c.hidden = true; const d = getComputedStyle(c).display; c.hidden = was;
+    return d !== 'none';
+  });
+  if (hiddenShows) fail(where, 'the canvas shows while it is hidden (before the picture is ready)');
 
   const inside = await page.evaluate(() => {
     const r = document.querySelector('.fk-card').getBoundingClientRect();
