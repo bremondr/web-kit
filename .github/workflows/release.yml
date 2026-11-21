@@ -1,0 +1,52 @@
+# A release of one module: push a tag <module>-v<major>.<minor>.<patch>, for example
+#   git tag feedback-kit-v1.1.0 && git push origin feedback-kit-v1.1.0
+# The tests run, the notes come from the module's CHANGELOG.md (the release stops if it has no section for that
+# version), and a GitHub Release is made. Projects that use the module (consumers.json) find it on their next daily
+# check; with a WEB_KIT_DISPATCH_TOKEN secret they are told at once (a fine-grained token with Contents read and
+# write on those projects: that is what starting a workflow there with a repository_dispatch event needs).
+name: Release
+
+on:
+  push:
+    tags: ['*-v[0-9]*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.ref_name }}
+      DISPATCH_TOKEN: ${{ secrets.WEB_KIT_DISPATCH_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Unit tests
+        run: node --test
+
+      - name: Modules stand on their own
+        run: node tools/check-modules.mjs
+
+      - name: Release notes
+        run: node tools/release-notes.mjs "$TAG" > "$RUNNER_TEMP/notes.md"
+
+      - name: GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$TAG" --title "$TAG" --notes-file "$RUNNER_TEMP/notes.md" --verify-tag
+
+      - name: Tell the projects that use it
+        if: env.DISPATCH_TOKEN != ''
+        env:
+          GH_TOKEN: ${{ secrets.WEB_KIT_DISPATCH_TOKEN }}
+        run: |
+          module="${TAG%-v*}"
+          for repo in $(jq -r --arg m "$module" 'to_entries[] | select(.value | index($m)) | .key' consumers.json); do
+            echo "Telling $repo"
+            gh api "repos/$repo/dispatches" -f event_type=web-kit-released -f "client_payload[tag]=$TAG" || echo "::warning::Couldn't tell $repo"
+          done
