@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>feedback-kit demo</title>
+<link rel="stylesheet" href="demo.css">
+<link rel="stylesheet" href="fonts/bungee.css">
+<link rel="stylesheet" href="../feedback-kit/feedback-kit.css">
+<style>
+  /* The chart's colours are CSS variables, and its parts are styled through classes: svgPicture has to keep both. */
+  :root{
+    --demo-display:'Bungee',system-ui,sans-serif;
+    --demo-sky-top:#8ec5ff; --demo-sky-bottom:#f3f8ff;
+    --demo-chart-ink:#1f2a33; --demo-chart-bar:#4f7fb0; --demo-chart-pick:#e8590c; --demo-chart-line:#26323b;
+    /* the panel, themed with its --fk-* properties */
+    --fk-surface:var(--demo-surface); --fk-ink:var(--demo-ink); --fk-muted:var(--demo-muted); --fk-rule:var(--demo-rule);
+    --fk-accent:var(--demo-accent); --fk-on-accent:var(--demo-on-accent); --fk-stage:var(--demo-bg);
+    --fk-font:var(--demo-font); --fk-display:var(--demo-display);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --demo-sky-top:#0b1f3a; --demo-sky-bottom:#24476e;
+      --demo-chart-ink:#eef3f8; --demo-chart-bar:#7aa7d6; --demo-chart-pick:#ffb347; --demo-chart-line:#d7e2ec;
+    }
+  }
+  .chart{display:block;width:100%;height:auto;aspect-ratio:720/420;border-radius:10px}
+  .chart .chart-title{font-family:var(--demo-display);font-size:30px;fill:var(--demo-chart-ink)}
+  .chart .axis{font-family:var(--demo-font);font-size:16px;fill:var(--demo-chart-ink)}
+  .chart .value{font-family:var(--demo-font);font-size:15px;font-weight:700;fill:var(--demo-chart-ink);text-anchor:middle}
+  .chart .day{text-anchor:middle}
+  .chart .bar{fill:var(--demo-chart-bar);stroke:var(--demo-chart-line);stroke-width:1.5px}
+  .chart .bar.is-picked{fill:var(--demo-chart-pick);stroke-width:3px}
+  .chart .avg{stroke:var(--demo-chart-line);stroke-width:2px;stroke-dasharray:8 6;fill:none}
+  .chart .ground{stroke:var(--demo-chart-line);stroke-width:2px}
+  .controls{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:12px}
+  .controls .picked{min-width:9ch;text-align:center;font-weight:600}
+  .controls .primary{margin-left:auto}
+  @media (max-width:520px){ .controls .primary{margin-left:0;flex-basis:100%} }
+  .option{display:flex;gap:10px;align-items:flex-start;cursor:pointer}
+  .option input{width:20px;height:20px;margin:2px 0 0;flex:none}
+  .layout{display:grid;gap:16px;grid-template-columns:minmax(0,1fr)}
+  @media (min-width:1000px){ .layout{grid-template-columns:minmax(0,1fr) 320px;align-items:start} }
+</style>
+</head>
+<body>
+<main class="page">
+  <p class="crumb"><a href="./">web-kit demos</a></p>
+  <h1>feedback-kit</h1>
+  <p class="lead">Tap <strong>Send feedback</strong>: the panel shows a picture of the chart as it is now, to draw on,
+    and links to a new issue filled in with what was on screen. The module comes from <code>../feedback-kit/</code>,
+    the branch this page was served from.</p>
+
+  <div class="layout">
+    <section class="card" aria-label="Chart">
+      <svg class="chart" id="chart" viewBox="0 0 720 420" role="img" aria-labelledby="chart-title">
+        <style>
+          /* inside the SVG, so it travels with the picture; its var() values need svgPicture's `vars` option */
+          .sky-top{stop-color:var(--demo-sky-top)}
+          .sky-bottom{stop-color:var(--demo-sky-bottom)}
+        </style>
+        <defs>
+          <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" class="sky-top"/>
+            <stop offset="1" class="sky-bottom"/>
+          </linearGradient>
+        </defs>
+        <rect class="sky" width="720" height="420" fill="url(#sky)"/>
+        <text class="chart-title" id="chart-title" x="32" y="56">Tries per day</text>
+        <g id="bars"></g>
+        <line class="ground" x1="40" x2="690" y1="360" y2="360"/>
+      </svg>
+      <div class="controls">
+        <button class="btn" type="button" id="earlier" aria-label="Earlier day">‹ Earlier</button>
+        <span class="picked" id="picked" aria-live="polite"></span>
+        <button class="btn" type="button" id="later" aria-label="Later day">Later ›</button>
+        <button class="btn primary" type="button" id="feedback">Send feedback</button>
+      </div>
+    </section>
+
+    <aside class="stack">
+      <section class="card">
+        <h2>What to look at</h2>
+        <ul class="small">
+          <li>The picture keeps the title's web font (<span id="font-status">loading…</span>), the colours from CSS
+            variables and classes, and the gradient whose colours are set inside the SVG.</li>
+          <li>Draw with a finger, the Pencil or the mouse; Undo (or Ctrl/Cmd+Z) and Clear.</li>
+          <li>Try it in light and dark mode, and upright and sideways on the iPad.</li>
+        </ul>
+      </section>
+      <section class="card">
+        <h2>The issue</h2>
+        <p class="small">It opens in <a href="https://github.com/bremondr/web-kit/issues">bremondr/web-kit</a> with the
+          <code>demo</code> label. It is a real issue: submit it only if you mean to, and close it afterwards.</p>
+        <label class="option small"><input type="checkbox" id="long-link">
+          <span>Make the Reopen link too long, to see its fallback text and the panel's note.</span></label>
+      </section>
+    </aside>
+  </div>
+</main>
+<script type="module" src="feedback-kit.js"></script>
+</body>
+</html>

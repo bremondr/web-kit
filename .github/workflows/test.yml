@@ -23,3 +23,21 @@ jobs:
 
       - name: Modules stand on their own
         run: node tools/check-modules.mjs
+
+  demo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      # only for this check: the modules themselves use no packages
+      - name: Playwright and Chromium
+        run: |
+          npm install --no-save --no-package-lock playwright@1.63.0
+          npx playwright install --with-deps chromium
+
+      - name: Demo pages in headless Chromium
+        run: node tools/check-demo.mjs
