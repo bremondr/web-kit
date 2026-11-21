@@ -52,6 +52,12 @@ const near = (a, b, d = 24) => a.every((v, k) => Math.abs(v - b[k]) <= d);
 
 const browser = await chromium.launch();
 try {
+  {   // the repository's root (as GitHub Pages serves it) sends visitors to the demo
+    const page = await browser.newPage();
+    await page.goto(`${base}/`);
+    await page.waitForURL(`${base}/demo/`, { timeout: 5000 }).catch(() => fail('index.html', `the root goes to ${page.url()}, not /demo/`));
+    await page.close();
+  }
   for (const scheme of SCHEMES) for (const [size, width, height] of SIZES) {
     const context = await browser.newContext({ viewport: { width, height }, colorScheme: scheme, hasTouch: width < 600, deviceScaleFactor: shots ? 2 : 1 });
     await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: base });

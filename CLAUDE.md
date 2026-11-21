@@ -22,7 +22,7 @@ node tools/check-modules.mjs
 node tools/check-demo.mjs        # the demo pages in headless Chromium (needs Playwright)
 ```
 
-Add tests in `<module>/*.test.mjs` for logic that runs in plain Node. Code that needs a browser is tried in the demo: serve the repository's root (`python3 -m http.server`), open `http://localhost:8000/demo/`, and look at it at iPad (1180 × 820, 820 × 1180) and phone (390 × 844) sizes, in light and dark mode. `node tools/check-demo.mjs --screenshots <dir>` saves those pictures. Extend `tools/check-demo.mjs` when a demo page gets something new worth checking.
+Add tests in `<module>/*.test.mjs` for logic that runs in plain Node. Code that needs a browser is tried in the demo: serve the repository's root (`python3 -m http.server`), open `http://localhost:8000/demo/`, and look at it at iPad (1180 × 820, 820 × 1180) and phone (390 × 844) sizes, in light and dark mode. `node tools/check-demo.mjs --screenshots <dir>` saves those pictures. GitHub Pages publishes `main` at https://bremondr.github.io/web-kit/demo/ (see "The demo online" in `docs/maintaining.md`), so a merged change can be tried there on a real iPad. Extend `tools/check-demo.mjs` when a demo page gets something new worth checking.
 
 ## Workflow
 

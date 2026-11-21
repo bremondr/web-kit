@@ -27,7 +27,11 @@ Copies are never edited in a project: change the module here, release it, and th
 
 ## Demo
 
-[`demo/`](demo/) has one page per module, for trying it in a real browser without any project. The pages import each module straight from its folder, so they show the branch you are on, not a release. Serve the repository's root and open the demo:
+[`demo/`](demo/) has one page per module, for trying it in a real browser without any project. The pages import each module straight from its folder, so they show the branch you are on, not a release.
+
+**Online:** <https://bremondr.github.io/web-kit/demo/> shows `main`, published by GitHub Pages a minute or so after each merge. Open it on the iPad or a phone.
+
+**On your computer**, to try a branch: serve the repository's root and open the demo:
 
 ```sh
 python3 -m http.server
@@ -57,6 +61,7 @@ All three run on every pull request (`.github/workflows/test.yml`); the first tw
 | `consumer/CHANGELOG.md` | changes to those two files, and whether projects should copy them again |
 | `consumers.json` | which projects use which modules, for the release notice |
 | `demo/` | a page per module that imports it from its folder, and `index.html` linking them |
+| `index.html`, `.nojekyll` | for GitHub Pages: the root sends visitors to `demo/`, and files are served as they are |
 | `docs/` | the guides above |
 | `tools/check-modules.mjs`, `tools/check-demo.mjs`, `tools/release-notes.mjs` | the module check, the demo check, and the release notes from a changelog |
 | `.github/workflows/` | `test.yml` (checks on pull requests), `release.yml` (a release from a tag) |
