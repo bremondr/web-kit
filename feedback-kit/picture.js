@@ -12,7 +12,8 @@
 
    embedFonts({stylesheet, family, unicode}) → Promise<string>
      The @font-face rules of `family` from a stylesheet that allows CORS (Google Fonts does), with the font files
-     inlined as data: URLs. `unicode` picks the subsets (default: Latin). Resolves to '' when it can't be read. */
+     inlined as data: URLs. `unicode` picks the subsets by their unicode-range (default: Latin); a rule without a
+     unicode-range covers every character and is always kept. Resolves to '' when it can't be read. */
 
 const NS = 'http://www.w3.org/2000/svg';
 const PROPS = ['display', 'visibility', 'opacity', 'fill', 'fill-opacity', 'fill-rule', 'stroke', 'stroke-opacity',
@@ -64,7 +65,7 @@ export function embedFonts({stylesheet, family, unicode = /U\+0000-00FF/i}){
   if (fontCache.has(key)) return fontCache.get(key);
   const p = (async () => {
     const css = await (await fetch(stylesheet, {mode: 'cors'})).text();
-    const faces = (css.match(/@font-face\s*{[^}]*}/g) || []).filter(f => f.includes(family) && unicode.test(f));
+    const faces = (css.match(/@font-face\s*{[^}]*}/g) || []).filter(f => f.includes(family) && (unicode.test(f) || !/unicode-range/i.test(f)));
     const out = await Promise.all(faces.map(async f => {
       const m = /url\(\s*['"]?([^'")]+)['"]?\s*\)/.exec(f);
       if (!m) return '';
