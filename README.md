@@ -25,14 +25,27 @@ Copies are never edited in a project: change the module here, release it, and th
 - **[Maintaining web-kit](docs/maintaining.md):** releasing a module, telling projects at once (`WEB_KIT_DISPATCH_TOKEN`), adding a module, changing the consumer files, and all tokens at a glance.
 - **Each module's README** says how to wire it into a project, for example [feedback-kit](feedback-kit/README.md#setting-it-up-in-a-project).
 
+## Demo
+
+[`demo/`](demo/) has one page per module, for trying it in a real browser without any project. The pages import each module straight from its folder, so they show the branch you are on, not a release. Serve the repository's root and open the demo:
+
+```sh
+python3 -m http.server
+```
+
+Then go to <http://localhost:8000/demo/>. (Opened as a file, the browser won't load the modules.)
+
 ## Checks
 
 ```sh
 node --test                    # every *.test.mjs
 node tools/check-modules.mjs   # modules import only from themselves, and have a README and a changelog
+node tools/check-demo.mjs      # the demo pages in headless Chromium, at iPad and phone sizes, light and dark
 ```
 
-Both run on every pull request (`.github/workflows/test.yml`) and before every release (`.github/workflows/release.yml`).
+The demo check needs [Playwright](https://playwright.dev/) with Chromium (`npm install --no-save playwright && npx playwright install chromium`); it serves the repository itself. With `--screenshots <dir>` it also saves a picture of each page and of the open panel.
+
+All three run on every pull request (`.github/workflows/test.yml`); the first two also run before every release (`.github/workflows/release.yml`).
 
 ## Files
 
@@ -43,6 +56,7 @@ Both run on every pull request (`.github/workflows/test.yml`) and before every r
 | `consumer/update-vendor.yml` | the workflow projects copy to `.github/workflows/` |
 | `consumer/CHANGELOG.md` | changes to those two files, and whether projects should copy them again |
 | `consumers.json` | which projects use which modules, for the release notice |
+| `demo/` | a page per module that imports it from its folder, and `index.html` linking them |
 | `docs/` | the guides above |
-| `tools/check-modules.mjs`, `tools/release-notes.mjs` | the module check, and the release notes from a changelog |
+| `tools/check-modules.mjs`, `tools/check-demo.mjs`, `tools/release-notes.mjs` | the module check, the demo check, and the release notes from a changelog |
 | `.github/workflows/` | `test.yml` (checks on pull requests), `release.yml` (a release from a tag) |

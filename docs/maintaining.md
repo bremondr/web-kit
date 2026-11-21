@@ -4,7 +4,7 @@ How to release a module, tell projects about it, add a module, and change what p
 
 ## Releasing a module
 
-1. Make the change on a branch, with tests for logic that runs in Node (`<module>/*.test.mjs`).
+1. Make the change on a branch, with tests for logic that runs in Node (`<module>/*.test.mjs`). Try what runs in a browser on the module's demo page (`demo/<module>.html`, see [Trying modules in the demo](#trying-modules-in-the-demo)), and update the page if what the module shows or does changed.
 2. At the top of the module's `CHANGELOG.md`, add a section for the new version:
    ```markdown
    ## 1.1.0 (2026-12-01)
@@ -69,10 +69,31 @@ If a project can't be reached, the release still succeeds and the run shows a wa
    - `README.md`: what it does, how a project sets it up and uses it, and its limits (see `feedback-kit/README.md`);
    - `CHANGELOG.md`, starting with the version you'll release first;
    - tests (`*.test.mjs`) for logic that runs in Node.
-2. Add a row to the modules table in the main README.
-3. Merge, then release (above). Then set up the projects that will use it ([setup-project.md](setup-project.md), steps 3 to 5 and 7).
+2. A demo page, `demo/<module>.html`, that imports the module from `../<module>/` and shows what it does with something worth looking at. Link it from `demo/index.html`, and add checks for it to `tools/check-demo.mjs`.
+3. Add a row to the modules table in the main README.
+4. Merge, then release (above). Then set up the projects that will use it ([setup-project.md](setup-project.md), steps 3 to 5 and 7).
 
-`tools/check-modules.mjs` treats every top-level folder with JavaScript in it as a module, except `tools/` and `consumer/`.
+`tools/check-modules.mjs` treats every top-level folder with JavaScript in it as a module, except `tools/`, `consumer/` and `demo/`.
+
+## Trying modules in the demo
+
+Browser code is tried in `demo/`, not in a project: each page imports its module straight from the repository, so it always runs the branch you are on.
+
+1. From the repository's root, run `python3 -m http.server` (or any static server) and open <http://localhost:8000/demo/>.
+2. Look at the page at iPad sizes (1180 × 820 and 820 × 1180) and phone size (390 × 844), in light and dark mode. The browser's device toolbar does this; on a real iPad, open the computer's address on the same network.
+3. Run `node tools/check-demo.mjs`. It drives every demo page in headless Chromium at those sizes and in both modes: no errors, nothing wider than the screen, and each module's own steps (for feedback-kit: the panel opens with the right picture, a stroke can be drawn and undone, the issue link is filled in). It needs Playwright with Chromium:
+   ```sh
+   npm install --no-save playwright
+   npx playwright install chromium
+   ```
+   `--screenshots <dir>` saves a picture of each page and the open panel, to put in the pull request.
+
+The feedback-kit page sends its issues to this repository with the `demo` label. Create the label once:
+```sh
+gh label create demo --repo bremondr/web-kit --color c5def5 --description "Sent from a demo page"
+```
+
+Only when a change depends on how a project uses a module is it worth also trying it in that project: copy the branch's module folder over the project's vendored copy locally, run that project's checks, and don't commit the copy there.
 
 ## Changing what projects copy
 

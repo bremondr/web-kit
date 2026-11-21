@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-/* Checks that every module stands on its own: each top-level folder with JavaScript in it (other than tools/ and
-   consumer/) imports only from inside itself, with relative paths, and has a README.md and a CHANGELOG.md.
+/* Checks that every module stands on its own: each top-level folder with JavaScript in it (other than tools/, consumer/ and
+   demo/) imports only from inside itself, with relative paths, and has a README.md and a CHANGELOG.md.
    Projects copy one module folder, so anything outside it wouldn't be there.
    Plain Node, no packages:  node tools/check-modules.mjs   (exit code 1 when something is wrong) */
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
@@ -8,7 +8,7 @@ import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const NOT_MODULES = new Set(['tools', 'consumer', 'node_modules']);
+const NOT_MODULES = new Set(['tools', 'consumer', 'demo', 'node_modules']);
 const problems = [], modules = [];
 
 function files(dir){
