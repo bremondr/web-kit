@@ -93,6 +93,13 @@ The feedback-kit page sends its issues to this repository with the `demo` label.
 gh label create demo --repo bremondr/web-kit --color c5def5 --description "Sent from a demo page"
 ```
 
+### The demo online
+
+GitHub Pages publishes the repository's root from `main` (Settings, Pages: "Deploy from a branch", `main`, `/ (root)`), so the demo is at <https://bremondr.github.io/web-kit/demo/> a minute or so after each merge. `index.html` at the root sends visitors to `demo/`, and `.nojekyll` makes Pages serve the files as they are, without Jekyll. Nothing else is needed: the pages import the modules from `../<module>/`, which Pages serves too. The demo online always shows `main`; to try a branch, serve it on your computer as above. To turn Pages on again after it has been turned off:
+```sh
+gh api repos/bremondr/web-kit/pages -X POST -f "source[branch]=main" -f "source[path]=/"
+```
+
 Only when a change depends on how a project uses a module is it worth also trying it in that project: copy the branch's module folder over the project's vendored copy locally, run that project's checks, and don't commit the copy there.
 
 ## Changing what projects copy
