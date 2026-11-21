@@ -23,4 +23,4 @@ Add tests in `<module>/*.test.mjs` for logic that runs in plain Node. Code that 
 
 ## Releasing
 
-Only when the owner asks. Merge first, then push a tag `<module>-v<version>` from `main`. The changelog must already have a section for that version. See "Releasing a module" in the README.
+Only when the owner asks. Merge first, then tag `main` with `<module>-v<version>`. The changelog must already have a section for that version. See "Releasing a module" in the README. A Claude Code cloud session can't push tags (its git proxy refuses them): give the owner the `gh api` command from the README instead.

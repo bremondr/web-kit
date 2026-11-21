@@ -48,10 +48,14 @@ A new **major** version (the first number) means the project may need changes. T
 
 1. Change the module, with tests where the logic runs in Node (`<module>/*.test.mjs`; projects don't get the tests).
 2. Add a section at the top of the module's `CHANGELOG.md`: `## 1.1.0 (date)`, with what changed and, for a new major version, what a project has to change.
-3. Merge to `main`, then tag and push:
+3. Merge to `main`, then tag `main` and push the tag:
    ```sh
    git tag feedback-kit-v1.1.0
    git push origin feedback-kit-v1.1.0
+   ```
+   Without a local copy, `gh` can make the tag on the newest commit of `main`:
+   ```sh
+   gh api repos/bremondr/web-kit/git/refs -f ref=refs/tags/feedback-kit-v1.1.0 -f sha=$(gh api repos/bremondr/web-kit/commits/main --jq .sha)
    ```
    `.github/workflows/release.yml` runs the tests, checks that the changelog has the version, and makes a GitHub Release. With a `WEB_KIT_DISPATCH_TOKEN` secret it also tells the projects in `consumers.json` at once; otherwise they find it on their next daily check.
 

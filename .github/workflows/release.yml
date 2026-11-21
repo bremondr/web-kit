@@ -1,5 +1,7 @@
-# A release of one module: push a tag <module>-v<major>.<minor>.<patch>, for example
+# A release of one module: a tag <module>-v<major>.<minor>.<patch> on main, for example
 #   git tag feedback-kit-v1.1.0 && git push origin feedback-kit-v1.1.0
+# or, without a local copy:
+#   gh api repos/bremondr/web-kit/git/refs -f ref=refs/tags/feedback-kit-v1.1.0 -f sha=$(gh api repos/bremondr/web-kit/commits/main --jq .sha)
 # The tests run, the notes come from the module's CHANGELOG.md (the release stops if it has no section for that
 # version), and a GitHub Release is made. Projects that use the module (consumers.json) find it on their next daily
 # check; with a WEB_KIT_DISPATCH_TOKEN secret they are told at once (a fine-grained token with Contents read and
@@ -35,10 +37,16 @@ jobs:
       - name: Release notes
         run: node tools/release-notes.mjs "$TAG" > "$RUNNER_TEMP/notes.md"
 
+      # made here, or (if it was made on GitHub's website or with gh release create) given its notes
       - name: GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$TAG" --title "$TAG" --notes-file "$RUNNER_TEMP/notes.md" --verify-tag
+        run: |
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release edit "$TAG" --notes-file "$RUNNER_TEMP/notes.md"
+          else
+            gh release create "$TAG" --title "$TAG" --notes-file "$RUNNER_TEMP/notes.md" --verify-tag
+          fi
 
       - name: Tell the projects that use it
         if: env.DISPATCH_TOKEN != ''
