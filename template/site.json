@@ -1,0 +1,6 @@
+{
+  "name": "{{TITLE}}",
+  "pages": ["index.html"],
+  "checks": ["node --test"],
+  "feedback": {"labels": ["feedback"]}
+}

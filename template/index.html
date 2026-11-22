@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>{{TITLE}}</title>
+<link rel="stylesheet" href="css/app.css">
+<script type="module" src="js/main.js"></script>
+</head>
+<body>
+<main class="page">
+  <h1>{{TITLE}}</h1>
+  <p class="lead">A new app made from web-kit's starter template. Replace this page with the real thing.</p>
+
+  <section class="tally" aria-labelledby="tally-title">
+    <h2 id="tally-title">Tally</h2>
+    <p class="count" aria-live="polite"><output id="count">0</output></p>
+    <div class="buttons">
+      <button type="button" id="down" aria-label="One less">−</button>
+      <button type="button" id="up" aria-label="One more">+</button>
+      <button type="button" id="reset" class="quiet">Reset</button>
+    </div>
+    <p class="muted small">Saved in this browser. A pull request preview keeps its own count.</p>
+  </section>
+</main>
+</body>
+</html>

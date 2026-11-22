@@ -2,6 +2,8 @@
 
 This takes a project from nothing to automatic updates: it keeps a plain copy of a released module, and a daily workflow opens a pull request when there is a new release. Ultimate Playbook was set up this way; its files are a working example ([`vendor.json`](https://github.com/bremondr/ultimate-playbook/blob/main/vendor.json), [`tools/update-vendor.mjs`](https://github.com/bremondr/ultimate-playbook/blob/main/tools/update-vendor.mjs), [`.github/workflows/update-vendor.yml`](https://github.com/bremondr/ultimate-playbook/blob/main/.github/workflows/update-vendor.yml)).
 
+For a new project, start from the template instead ([new-project.md](new-project.md)): it comes with all of this, and with pull request previews. To add previews to a project that has none, see [Adding previews to a project](#adding-previews-to-a-project).
+
 **What you need:** the project on GitHub; Node 18 or newer and git on your computer; the [GitHub CLI](https://cli.github.com/) (`gh`), signed in. The commands work in PowerShell and in a Unix shell unless a step shows both.
 
 **To have Claude Code do it:** open a session in the project and paste the prompt at the end of this page. The steps that need your GitHub account (the label, the token and secret, the setting) stay with you; Claude lists them for you.
@@ -161,9 +163,77 @@ bremondr/web-kit and tell me.
 
 For feedback-kit 2.0.0 (whole-page picture, own screenshot, screen capture), "What to change" covers: `page.js` in the service worker's list, `page: {fonts}` and `area`, a `pictureLabel` for the app's own `picture` (or removing it), and `data-fk-skip`.
 
+## Adding previews to a project
+
+web-kit also has the files for publishing a project with GitHub Pages: `main` at the root, and every open pull request from the repository as a preview at `/preview/pr-<number>/`, with a bot comment linking it. A preview keeps its own browser storage (separate from the live site and the other previews), has a small badge, doesn't work offline, and disappears when its pull request is closed. A new project made from the [template](new-project.md) has them from the start; this is how an existing project switches to them, for example from its own copy of the same idea (as Ultimate Playbook and Protogames have).
+
+**1. Copy the three files.** From the project's root, in a Unix shell (in PowerShell, `curl.exe` as in step 1):
+
+```sh
+mkdir -p tools .github/workflows
+curl -fsSL https://raw.githubusercontent.com/bremondr/web-kit/main/consumer/build-site.mjs -o tools/build-site.mjs
+curl -fsSL https://raw.githubusercontent.com/bremondr/web-kit/main/consumer/preview-runtime.js -o tools/preview-runtime.js
+curl -fsSL https://raw.githubusercontent.com/bremondr/web-kit/main/consumer/pages.yml -o .github/workflows/pages.yml
+```
+
+If the project already has a deploy workflow (`.github/workflows/pages.yml` or another that publishes Pages) and its own build script and runtime, the copies replace them: delete the old ones and their tests in the same pull request. If the scripts must live somewhere other than `tools/`, change `SITE_TOOLS` at the top of the workflow; nothing else in the three files changes.
+
+**2. Say what differs in `site.json`**, at the project's root. Every option is described at the top of `tools/build-site.mjs` and in [new-project.md](new-project.md#sitejson); without a `site.json`, everything but tools, tests, docs and Markdown is published, `index.html` must exist, and `node --test` must pass. For Ultimate Playbook, keeping what it has now (its service worker, its checks, the Feedback link that opens its own panel, `window.PLAYBOOK_PREVIEW`, and its existing bot comments):
+
+```json
+{
+  "name": "Ultimate Playbook",
+  "paths": ["index.html", "manifest.webmanifest", "sw.js", "css", "js", "icons"],
+  "serviceWorker": "sw.js",
+  "checks": ["node --test", "node tools/check-imports.mjs"],
+  "feedback": {"labels": ["feedback"], "event": "playbook:feedback"},
+  "global": "PLAYBOOK_PREVIEW",
+  "commentMarker": "<!-- playbook-preview -->",
+  "commentNote": "It keeps its own saved drills, separate from the live app, and doesn't work offline. It is removed when this pull request is closed or merged."
+}
+```
+
+For Protogames (landing page at the root, the editor in `app/`, no analytics in previews):
+
+```json
+{
+  "name": "Protogames",
+  "paths": ["index.html", "landing.js", "app"],
+  "pages": ["index.html", "app/index.html"],
+  "dropFromPreviews": ["simpleanalyticscdn"],
+  "checks": ["npm test"],
+  "commentMarker": "<!-- protogames-preview -->"
+}
+```
+
+Keep `commentMarker` the same as the old workflow's, so the bot updates the comments already on open pull requests instead of adding new ones. A service worker named in `serviceWorker` must have `const VERSION = '…';` and a `const APP_FILES = [ … ];` list (closing `];` on a line of its own): the build fills both in from what is published, so nobody bumps them by hand.
+
+**3. Ignore the build's output** in `.gitignore`: `_site/`, `previews.json`, `build-summary.json`.
+
+**4. Try it locally.** The build reads every version from git, so commit first:
+
+```sh
+node tools/build-site.mjs --run-checks
+echo '[{"number": 1, "title": "Try", "ref": "HEAD"}]' > previews.json
+node tools/build-site.mjs --out _site --main HEAD --previews previews.json --repo <owner>/<project>
+python3 -m http.server 8000 --directory _site
+```
+
+`http://localhost:8000/` is the live site and `http://localhost:8000/preview/pr-1/` the preview, with its badge.
+
+**5. Pages from Actions.** If Pages still deploys from a branch, switch it (Settings, Pages, Source: "GitHub Actions"):
+
+```sh
+gh api repos/<owner>/<project>/pages -X PUT -f build_type=workflow
+```
+
+**6. Merge, then check.** The workflow runs as it is on `main` (it uses `pull_request_target`, so a pull request's own files are never run), so the pull request that adds it gets no preview itself. After the merge, the push to `main` publishes the site; run it by hand with `gh workflow run pages.yml --repo <owner>/<project>` if it didn't. Open pull requests then get their comment, and every new one gets a preview.
+
+Don't edit the copies; take new ones when [`consumer/CHANGELOG.md`](../consumer/CHANGELOG.md) says to.
+
 ## When web-kit's consumer files change
 
-`consumer/update-vendor.mjs` and `update-vendor.yml` change rarely. When they do, [`consumer/CHANGELOG.md`](../consumer/CHANGELOG.md) says what changed and whether projects should copy them again (step 1).
+The consumer files (`update-vendor.mjs` and `update-vendor.yml`, and for previews `build-site.mjs`, `preview-runtime.js` and `pages.yml`) change rarely. When they do, [`consumer/CHANGELOG.md`](../consumer/CHANGELOG.md) says what changed and whether projects should copy them again (step 1, or step 1 of Adding previews).
 
 ## Troubleshooting
 

@@ -1,0 +1,4 @@
+node_modules/
+_site/
+previews.json
+build-summary.json

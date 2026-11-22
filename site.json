@@ -1,0 +1,7 @@
+{
+  "name": "web-kit demo",
+  "pages": ["demo/index.html"],
+  "exclude": ["/consumer/", "/template/", "/consumers.json"],
+  "checks": ["node --test", "node tools/check-modules.mjs"],
+  "commentNote": "It runs this branch's modules on the demo pages, with its own saved data (tokens, the offline copy), separate from the demo of main. It is removed when this pull request is closed or merged."
+}
