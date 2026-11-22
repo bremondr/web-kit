@@ -1,0 +1,26 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      # every *.test.mjs in the repository
+      - name: Unit tests
+        run: node --test
+
+      - name: Vendored modules are exactly their releases
+        run: node tools/update-vendor.mjs --verify
