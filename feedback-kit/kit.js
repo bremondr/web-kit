@@ -27,15 +27,18 @@
    a stroke. See README.md in this folder. */
 import { issueUrl } from './issue.js';
 import { createSketch } from './sketch.js';
-import { pagePicture } from './page.js';
+import { canCaptureScreen, pagePicture, screenPicture } from './page.js';
 
 const PENS = [['#ff2d55', 'Red'], ['#ffffff', 'White'], ['#1f6feb', 'Blue'], ['#111111', 'Black']];
 
 export function deviceRows(){
   const dark = matchMedia('(prefers-color-scheme: dark)').matches;
   const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  const desktop = matchMedia('(pointer: fine)').matches && !matchMedia('(pointer: coarse)').matches;
   return [
     ['Screen', `${innerWidth} × ${innerHeight} px, ${innerWidth >= innerHeight ? 'landscape' : 'portrait'}, pixel ratio ${Math.round((devicePixelRatio || 1) * 100) / 100}, ${dark ? 'dark' : 'light'} mode${standalone ? ', home screen app' : ''}`],
+    // on a desktop the page is a window on a bigger screen: say how big both are
+    ...(desktop ? [['Window', `${outerWidth} × ${outerHeight} px on a ${screen.width} × ${screen.height} px screen`]] : []),
     ['Browser', navigator.userAgent],
     ['Page', location.origin + location.pathname]
   ];
@@ -71,7 +74,8 @@ function element(tag, props = {}, ...kids){
 }
 
 export function createFeedback({repo, labels = ['feedback'], picture = null, pictureLabel = 'Just this part', page = {},
-  describe, footer = '', heading = 'Send feedback'}){
+  capture = 'button', describe, footer = '', heading = 'Send feedback'}){
+  const captureMode = () => { const m = typeof capture === 'function' ? capture() : capture; return canCaptureScreen() ? m : 'off'; };
   let ui = null, run = 0, shown = 0, fileName = 'feedback.png', file = null, objectUrl = null;
   let pictures = {}, current = null;   // this time's pictures by kind ('page', 'part'), each a promise of a canvas
 
@@ -89,11 +93,13 @@ export function createFeedback({repo, labels = ['feedback'], picture = null, pic
     q.kinds = {
       page: element('button', {type: 'button', class: 'fk-btn', 'aria-pressed': 'true', text: 'Whole page'}),
       part: element('button', {type: 'button', class: 'fk-btn', 'aria-pressed': 'false', text: pictureLabel}),
-      own: element('button', {type: 'button', class: 'fk-btn', 'aria-pressed': 'false', text: 'Your screenshot', hidden: true})
+      own: element('button', {type: 'button', class: 'fk-btn', 'aria-pressed': 'false', text: 'Your screenshot', hidden: true}),
+      screen: element('button', {type: 'button', class: 'fk-btn', 'aria-pressed': 'false', text: 'Screen capture', hidden: true})
     };
     q.pick = element('div', {class: 'fk-pick', role: 'group', 'aria-label': 'Picture'}, ...Object.values(q.kinds));
     q.file = element('input', {type: 'file', accept: 'image/*', hidden: true, tabindex: '-1', 'aria-hidden': 'true'});
     q.mine = element('button', {type: 'button', class: 'fk-btn fk-mine', text: 'Use my screenshot…'});
+    q.grab = element('button', {type: 'button', class: 'fk-btn', text: 'Take a real screenshot', hidden: true});
     q.mineNote = element('p', {class: 'fk-note', text: 'Or paste a screenshot (Ctrl+V, ⌘V) or drop one on the picture.'});
     q.share = element('button', {type: 'button', class: 'fk-btn', text: 'Share…', hidden: true});
     q.save = element('a', {class: 'fk-btn', 'aria-disabled': 'true', text: 'Save picture'});
@@ -106,7 +112,7 @@ export function createFeedback({repo, labels = ['feedback'], picture = null, pic
           element('div', {class: 'fk-stage'}, q.canvas, q.wait),
           element('div', {class: 'fk-side'},
             q.pick,
-            element('div', {class: 'fk-own'}, q.mine, q.file, q.mineNote),
+            element('div', {class: 'fk-own'}, q.grab, q.mine, q.file, q.mineNote),
             element('div', {class: 'fk-tools'}, element('div', {class: 'fk-pens', role: 'group', 'aria-label': 'Pen colour'}, ...q.pens), q.undo, q.clear),
             element('p', {class: 'fk-note', text: 'Draw on the picture to point at the problem.'}),
             q.status, q.open, q.long,
@@ -122,6 +128,7 @@ export function createFeedback({repo, labels = ['feedback'], picture = null, pic
     q.clear.addEventListener('click', () => q.sketch.clear());
     q.copy.addEventListener('click', () => refresh(true));
     for (const [kind, b] of Object.entries(q.kinds)) b.addEventListener('click', () => { if (kind !== current) show(kind, true); });
+    q.grab.addEventListener('click', () => grab());
     // the person's own screenshot: chosen, pasted or dropped
     q.mine.addEventListener('click', () => { q.file.value = ''; q.file.click(); });
     q.file.addEventListener('change', () => { if (q.file.files[0]) useOwn(q.file.files[0]); });
@@ -172,8 +179,9 @@ export function createFeedback({repo, labels = ['feedback'], picture = null, pic
   }
 
   /* Show one of this time's pictures. `toClipboard` when called in a tap (opening the panel, a switch button): the
-     copy has to start inside it. If the whole page can't be drawn here, the project's own picture takes its place. */
-  function show(kind, toClipboard){
+     copy has to start inside it. If the whole page can't be drawn here, the project's own picture takes its place.
+     `note`, if given, is said (as a warning) once the picture is there. */
+  function show(kind, toClipboard, note = null){
     const mine = ++shown, pic = pictures[kind];
     current = kind;
     for (const [k, b] of Object.entries(ui.kinds)) b.setAttribute('aria-pressed', String(k === kind));
@@ -187,7 +195,8 @@ export function createFeedback({repo, labels = ['feedback'], picture = null, pic
       ui.sketch.setPicture(canvas);
       ui.canvas.hidden = false; ui.wait.hidden = true;
       refresh(false);
-      if (copied) copied.then(() => { if (mine === shown) say(COPIED); }, () => { if (mine === shown) say(NOT_COPIED, true); });
+      if (note) say(note, true);
+      else if (copied) copied.then(() => { if (mine === shown) say(COPIED); }, () => { if (mine === shown) say(NOT_COPIED, true); });
       else say(kind === 'own' ? 'Your screenshot is in. Draw on it, then copy, save or share it for the issue.' : 'Draw on the picture, then copy, save or share it for the issue.');
     }, () => {
       if (mine !== shown) return;
@@ -219,6 +228,26 @@ export function createFeedback({repo, labels = ['feedback'], picture = null, pic
     show('own', false);
   }
 
+  /* A real screenshot from the browser's screen capture, in a tap. The panel is hidden first, so it isn't in the
+     picture, and comes back with the capture, or with the picture it had if the person says no. */
+  function grab(){
+    const mine = run, had = current;
+    ui.root.hidden = true;
+    const shot = screenPicture({maxSize: page.maxSize || 2400});   // in the tap: the browser asks now
+    shot.catch(() => {});
+    return shot.then(canvas => {
+      if (mine !== run) return;
+      pictures.screen = Promise.resolve(canvas);
+      ui.kinds.screen.hidden = false; ui.pick.hidden = false;
+      ui.root.hidden = false;
+      show('screen', true);
+    }, () => {
+      if (mine !== run) return;
+      ui.root.hidden = false;
+      show(had || 'page', false, 'No screen capture, so the picture is the one made from the page. Your own screenshot works too.');
+    }).finally(() => { if (mine === run) ui.close.focus({preventScroll: true}); });
+  }
+
   function open(){
     if (ui && !ui.root.hidden) return;
     // all in the tap: this is the moment the feedback is about. The panel isn't in the picture (data-fk-skip)
@@ -229,15 +258,23 @@ export function createFeedback({repo, labels = ['feedback'], picture = null, pic
     ui = ui || build();
     run++;
     fileName = info.fileName || 'feedback.png'; file = null;
+    const mode = captureMode();
     ui.kinds.part.hidden = !picture;
-    ui.kinds.own.hidden = true;
+    ui.kinds.own.hidden = ui.kinds.screen.hidden = true;
+    ui.grab.hidden = mode === 'off';
     ui.pick.hidden = !picture;
     ui.sub.textContent = info.subtitle || '';
     ui.long.hidden = true;
     ui.open.removeAttribute('href'); ui.open.setAttribute('aria-disabled', 'true');
-    show('page', true);   // still inside the tap, so the copy can start
-    ui.root.hidden = false;
-    ui.close.focus({preventScroll: true});
+    if (mode === 'tap'){
+      // the browser asks right away; the panel opens once there is a capture, or the page's picture if not
+      current = 'page';
+      grab();
+    } else {
+      show('page', true);   // still inside the tap, so the copy can start
+      ui.root.hidden = false;
+      ui.close.focus({preventScroll: true});
+    }
 
     const mine = run;
     Promise.resolve(info.issue).then(issue => {

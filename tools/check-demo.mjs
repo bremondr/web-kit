@@ -3,7 +3,8 @@
    dark mode: no page errors, no console errors, no failed requests, nothing wider than the screen. On the
    feedback-kit page the panel opens with a picture of the whole page, "Just the chart" switches to the chart's own
    picture, both keep the chart's CSS variables and classes, a stroke can be drawn and undone, the person's own
-   screenshot can be chosen, pasted or dropped instead, the whole scrollable page can be pictured, and the issue link is filled in (also with the Reopen link too long, so the fallback is used).
+   screenshot can be chosen, pasted or dropped instead, a (faked) real screen capture works with the button and at the
+   tap and leaves the panel out, the whole scrollable page can be pictured, and the issue link is filled in (also with the Reopen link too long, so the fallback is used).
 
      node tools/check-demo.mjs                        (exit code 1 when something is wrong)
      node tools/check-demo.mjs --screenshots <dir>    also save a picture of each page and of the open panel
@@ -196,7 +197,7 @@ async function checkFeedback(page, where, scheme, size) {
     if (!issue.url.startsWith('https://github.com/bremondr/web-kit/issues/new?')) fail(where, `the issue goes to ${issue.url.slice(0, 60)}`);
     if (issue.labels !== 'demo') fail(where, `the issue's labels are "${issue.labels}"`);
     if (!/^Demo feedback: \w+day$/.test(issue.title)) fail(where, `the issue's title is "${issue.title}"`);
-    for (const part of ['## Reopen', '/demo/feedback-kit.html#day=', '| Day |', '| Screen |', '| Browser |']) if (!issue.body.includes(part)) fail(where, `the issue's body has no "${part}"`);
+    for (const part of ['## Reopen', '/demo/feedback-kit.html#day=', '| Day |', '| Screen |', '| Browser |', ...(size === 'desktop' ? ['| Window |'] : [])]) if (!issue.body.includes(part)) fail(where, `the issue's body has no "${part}"`);
     if (issue.shortened) fail(where, 'the panel says the issue was shortened, but nothing was too long');
   }
   await page.keyboard.press('Escape');
@@ -249,6 +250,78 @@ async function checkFeedback(page, where, scheme, size) {
   await ready().catch(() => fail(where, 'no picture after switching back to the whole page'));
   if (near(await pixel([0.5, 0.5]), hex('#ffcc00'), 6)) fail(where, 'switching back to the whole page still shows the screenshot');
   await page.click('.fk-x');
+
+  // a real screen capture. Headless browsers can't capture, so getDisplayMedia gives a canvas painted one colour,
+  // and notes whether the panel was out of the way when it was asked; or it says no, as when the person declines
+  await page.evaluate(() => {
+    window.fakeCapture = { answer: 'yes', asked: 0, panelShown: false };
+    const getDisplayMedia = async () => {
+      fakeCapture.asked++;
+      const fk = document.querySelector('.fk');
+      fakeCapture.panelShown = !!fk && !fk.hidden;
+      if (fakeCapture.answer !== 'yes') throw new DOMException('declined', 'NotAllowedError');
+      const c = document.createElement('canvas'); c.width = 1280; c.height = 800;
+      const x = c.getContext('2d'), paint = () => { x.fillStyle = '#12ab34'; x.fillRect(0, 0, c.width, c.height); };
+      paint(); setInterval(paint, 50);
+      return c.captureStream(20);
+    };
+    // on the prototype and the object itself: WebKit ignores a plain assignment
+    const put = (o, k, v) => Object.defineProperty(o, k, { value: v, configurable: true, writable: true });
+    if (navigator.mediaDevices){
+      if (typeof MediaDevices === 'function') put(MediaDevices.prototype, 'getDisplayMedia', getDisplayMedia);
+      put(navigator.mediaDevices, 'getDisplayMedia', getDisplayMedia);
+    } else put(navigator, 'mediaDevices', { getDisplayMedia });
+    window.fakeCapture.installed = navigator.mediaDevices.getDisplayMedia === getDisplayMedia;
+  });
+  if (!(await page.evaluate(() => fakeCapture.installed))) fail(where, 'the check could not put its fake screen capture in place');
+  const coarse = await page.evaluate(() => matchMedia('(pointer: coarse)').matches);
+  const grab = page.locator('.fk-btn', { hasText: 'Take a real screenshot' });
+  await page.click('#feedback');
+  await ready();
+  if (coarse) { if (await grab.isVisible()) fail(where, '"Take a real screenshot" shows on a touch screen, where browsers can\'t capture'); }
+  else if (!(await grab.isVisible())) fail(where, 'no "Take a real screenshot" button on a desktop-like screen');
+  else {
+    await grab.click();
+    await page.waitForFunction(() => fakeCapture.asked > 0 && !document.querySelector('.fk').hidden, null, { timeout: 5000 }).catch(() => {});
+    await ready().catch(() => fail(where, 'no picture after the screen capture'));
+    const f = await page.evaluate(() => fakeCapture);
+    if (f.asked !== 1) fail(where, `the screen capture was asked for ${f.asked} times`);
+    if (f.panelShown) fail(where, 'the panel was on screen while capturing, so it would be in the picture');
+    if (!(await page.locator('.fk').isVisible())) fail(where, 'the panel did not come back after the screen capture');
+    if (!near(await pixel([0.5, 0.5]), hex('#12ab34'), 8)) fail(where, `the screen capture is not the picture (rgb(${await pixel([0.5, 0.5])}))`);
+    const chosen = await page.locator('.fk-pick [aria-pressed="true"]').textContent().catch(() => null);
+    if (chosen !== 'Screen capture') fail(where, `after the screen capture, "${chosen}" is chosen`);
+    // declined: the panel comes back with the picture it had, and says so
+    await page.evaluate(() => { fakeCapture.answer = 'no'; fakeCapture.asked = 0; });
+    await grab.click();
+    await page.waitForFunction(() => fakeCapture.asked > 0 && !document.querySelector('.fk').hidden, null, { timeout: 5000 })
+      .catch(() => fail(where, 'the panel did not come back after the capture was declined'));
+    await ready().catch(() => {});
+    const said = await page.locator('.fk-status').textContent();
+    if (!/No screen capture/.test(said)) fail(where, `after a declined capture the panel says "${said}"`);
+    if (!near(await pixel([0.5, 0.5]), hex('#12ab34'), 8)) fail(where, 'after a declined capture the picture changed');
+  }
+  await page.click('.fk-x');
+  if (!coarse) {
+    // at the tap: the browser asks before the panel opens, which then shows the capture
+    await page.evaluate(() => { fakeCapture.answer = 'yes'; fakeCapture.asked = 0; });
+    await page.check('input[name=capture][value=tap]');
+    await page.click('#feedback');
+    await page.waitForFunction(() => fakeCapture.asked > 0 && !document.querySelector('.fk').hidden, null, { timeout: 5000 })
+      .catch(() => fail(where, 'the panel did not open after a capture at the tap'));
+    await ready().catch(() => {});
+    const f = await page.evaluate(() => fakeCapture);
+    if (f.asked !== 1 || f.panelShown) fail(where, `at the tap, the capture was asked ${f.asked} times, with the panel ${f.panelShown ? 'on screen' : 'hidden'}`);
+    if (!near(await pixel([0.5, 0.5]), hex('#12ab34'), 8)) fail(where, 'at the tap, the screen capture is not the picture');
+    await page.click('.fk-x');
+    // off: no button
+    await page.check('input[name=capture][value=off]');
+    await page.click('#feedback');
+    await ready();
+    if (await grab.isVisible()) fail(where, '"Take a real screenshot" shows with capture off');
+    await page.click('.fk-x');
+    await page.check('input[name=capture][value=button]');
+  }
 
   // the whole scrollable page: as tall as the page, not only the screen
   await page.check('#full-page');

@@ -62,6 +62,8 @@ const feedback = createFeedback({
   // the page's own part, as a switch in the panel
   picture: () => svgPicture($('chart'), {fonts, vars: ['--demo-sky-top', '--demo-sky-bottom']}),
   pictureLabel: 'Just the chart',
+  // read at each tap, so the choice on the page works at once
+  capture: () => document.querySelector('input[name=capture]:checked').value,
   describe: () => {
     const name = DAYS[day], tries = TRIES[day];
     let reopen = `${location.origin}${location.pathname}#day=${day + 1}`;
