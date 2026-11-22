@@ -1,6 +1,6 @@
 # Working on web-kit
 
-Reusable modules for static web apps, each copied into projects at a released version. Read `README.md` first, then `docs/maintaining.md` (releases, tokens, adding a module, changing the consumer files). `docs/setup-project.md` is how a project starts using the modules.
+Reusable modules for static web apps, each copied into projects at a released version. Read `README.md` first, then `docs/maintaining.md` (releases, tokens, adding a module, changing the consumer files). `docs/setup-project.md` is how an existing project starts using the modules (and adds pull request previews); `docs/new-project.md` starts a new project from `template/` with `tools/new-project.mjs`.
 
 ## Ground rules
 
@@ -11,8 +11,9 @@ Reusable modules for static web apps, each copied into projects at a released ve
 - Keep each module's `README.md` (its interface) and `CHANGELOG.md` up to date with every change.
 - Versions: `<major>.<minor>.<patch>`. A change a project must adapt to is a new major version, and the changelog says what to change. Additions are minor; fixes are patch.
 - Everything written in the repository (code comments, READMEs, changelogs, issues, PRs, commit messages) is in English, in plain words. The owner often gives feedback in Czech.
-- `consumer/update-vendor.mjs` and `consumer/update-vendor.yml` are the originals that projects copy, and they don't update themselves. Keep old copies working, add an entry to `consumer/CHANGELOG.md`, and say in the PR whether projects need a new copy.
+- The files in `consumer/` are the originals that projects copy: `update-vendor.mjs` and `update-vendor.yml` (vendored modules), and `pages.yml`, `build-site.mjs` and `preview-runtime.js` (the site and pull request previews, set per project in `site.json`). They don't update themselves. Keep old copies working, add an entry to `consumer/CHANGELOG.md`, and say in the PR whether projects need a new copy.
 - When a change affects how projects set up or use a module, update `docs/setup-project.md` and the module's "Setting it up in a project" section too.
+- `template/` is a starting point for new projects, not a module. When a consumer file or the projects' common setup changes, keep `template/` and `docs/new-project.md` in step.
 
 ## Checks (run all three before opening a PR)
 
