@@ -1,0 +1,7 @@
+{
+  "format": "demo-note",
+  "id": "hello",
+  "title": "Read from the real GitHub",
+  "text": "This note is a file in bremondr/web-kit, demo/git-store-sample/hello.json, read without a token.",
+  "color": "sea"
+}
