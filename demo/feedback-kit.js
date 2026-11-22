@@ -43,6 +43,10 @@ $('later').addEventListener('click', () => pick(day + 1));
 addEventListener('hashchange', () => { const d = parseInt(new URLSearchParams(location.hash.slice(1)).get('day'), 10); if (d >= 1 && d <= 7) pick(d - 1); });
 draw();
 
+// a list scrolled part of the way down, so the whole page's picture shows it scrolled too
+$('tries').replaceChildren(...Array.from({length: 24}, (_, k) => Object.assign(document.createElement('li'), {textContent: `${DAYS[k % 7]}: ${TRIES[k % 7]} tries`})));
+$('tries').scrollTop = 160;
+
 // the title's web font, inlined for the picture (an SVG drawn as an image can't load it by itself)
 const fonts = embedFonts({stylesheet: new URL('fonts/bungee.css', location.href).href, family: 'Bungee'});
 fonts.then(css => {
@@ -53,7 +57,11 @@ const feedback = createFeedback({
   repo: 'bremondr/web-kit',
   labels: ['demo'],
   footer: 'Sent from the feedback-kit demo page in web-kit.',
+  // the whole page first; its area is read at each tap, so the checkbox works without making the kit again
+  page: {fonts, get area(){ return $('full-page').checked ? 'full' : 'screen'; }},
+  // the page's own part, as a switch in the panel
   picture: () => svgPicture($('chart'), {fonts, vars: ['--demo-sky-top', '--demo-sky-bottom']}),
+  pictureLabel: 'Just the chart',
   describe: () => {
     const name = DAYS[day], tries = TRIES[day];
     let reopen = `${location.origin}${location.pathname}#day=${day + 1}`;

@@ -1,15 +1,18 @@
 /* feedback-kit: "Send feedback" for a static web app, as a GitHub issue plus a picture to draw on.
 
-   The panel shows a picture of the page (or part of it), lets the person draw on it to point at the problem,
-   keeps the picture on the clipboard (copied when the panel opens and again after every stroke), offers to share or
-   save it, and links to a new GitHub issue already filled in. Nothing here knows about the app: it gives the picture
-   and the description. No server and no token: the person signs in to GitHub and taps Submit there.
+   The panel shows a picture of the page, taken at the moment of the tap, lets the person draw on it to point at the
+   problem, keeps the picture on the clipboard (copied when the panel opens and again after every stroke), offers to
+   share or save it, and links to a new GitHub issue already filled in. Nothing here knows about the app: it gives
+   the description, and optionally a picture of its own part. No server and no token: the person signs in to
+   GitHub and taps Submit there.
 
      import { createFeedback } from './feedback-kit/kit.js';
      const feedback = createFeedback({
        repo: 'owner/name',
        labels: ['feedback'],
-       picture: () => svgPicture(svgElement),   // a promise of a canvas; called in the tap, so take the copy at once
+       page: {area: 'screen', fonts},            // the whole page (pagePicture in page.js), shown first
+       picture: () => svgPicture(svgElement),   // optional: the app's own part, a switch in the panel. A promise of
+       pictureLabel: 'Just the field',           //   a canvas; called in the tap, so take the copy at once
        describe: () => ({                        // what is on screen, also called in the tap
          subtitle: 'Angel drill, step 2',        // under the panel's heading
          fileName: 'feedback-angel-step-2.png',
@@ -24,6 +27,7 @@
    a stroke. See README.md in this folder. */
 import { issueUrl } from './issue.js';
 import { createSketch } from './sketch.js';
+import { pagePicture } from './page.js';
 
 const PENS = [['#ff2d55', 'Red'], ['#ffffff', 'White'], ['#1f6feb', 'Blue'], ['#111111', 'Black']];
 
@@ -36,6 +40,9 @@ export function deviceRows(){
     ['Page', location.origin + location.pathname]
   ];
 }
+
+const COPIED = 'The picture is copied. Paste it into the issue, or draw on it first.';
+const NOT_COPIED = 'Couldn’t copy the picture here. Save or share it, then attach it to the issue.';
 
 const toBlob = canvas => new Promise((ok, no) => canvas.toBlob(b => b ? ok(b) : no(new Error('no picture')), 'image/png'));
 
@@ -59,8 +66,10 @@ function element(tag, props = {}, ...kids){
   return e;
 }
 
-export function createFeedback({repo, labels = ['feedback'], picture, describe, footer = '', heading = 'Send feedback'}){
-  let ui = null, run = 0, fileName = 'feedback.png', file = null, objectUrl = null;
+export function createFeedback({repo, labels = ['feedback'], picture = null, pictureLabel = 'Just this part', page = {},
+  describe, footer = '', heading = 'Send feedback'}){
+  let ui = null, run = 0, shown = 0, fileName = 'feedback.png', file = null, objectUrl = null;
+  let pictures = {}, current = null;   // this time's pictures by kind ('page', 'part'), each a promise of a canvas
 
   function build(){
     const q = {};
@@ -73,16 +82,22 @@ export function createFeedback({repo, labels = ['feedback'], picture, describe, 
     q.open = element('a', {class: 'fk-primary', target: '_blank', rel: 'noopener', 'aria-disabled': 'true', text: 'Write the issue on GitHub'});
     q.long = element('p', {class: 'fk-note', hidden: true});
     q.copy = element('button', {type: 'button', class: 'fk-btn', text: 'Copy picture'});
+    q.kinds = {
+      page: element('button', {type: 'button', class: 'fk-btn', 'aria-pressed': 'true', text: 'Whole page'}),
+      part: element('button', {type: 'button', class: 'fk-btn', 'aria-pressed': 'false', text: pictureLabel})
+    };
+    q.pick = element('div', {class: 'fk-pick', role: 'group', 'aria-label': 'Picture'}, ...Object.values(q.kinds));
     q.share = element('button', {type: 'button', class: 'fk-btn', text: 'Share…', hidden: true});
     q.save = element('a', {class: 'fk-btn', 'aria-disabled': 'true', text: 'Save picture'});
     q.close = element('button', {type: 'button', class: 'fk-x', 'aria-label': 'Close', text: '×'});
     q.sub = element('p', {class: 'fk-sub'});
-    q.root = element('div', {class: 'fk', role: 'dialog', 'aria-modal': 'true', 'aria-label': heading, hidden: true},
+    q.root = element('div', {class: 'fk', role: 'dialog', 'aria-modal': 'true', 'aria-label': heading, hidden: true, 'data-fk-skip': ''},
       element('div', {class: 'fk-card'},
         element('header', {class: 'fk-head'}, element('div', {}, element('h2', {text: heading}), q.sub), q.close),
         element('div', {class: 'fk-body'},
           element('div', {class: 'fk-stage'}, q.canvas, q.wait),
           element('div', {class: 'fk-side'},
+            q.pick,
             element('div', {class: 'fk-tools'}, element('div', {class: 'fk-pens', role: 'group', 'aria-label': 'Pen colour'}, ...q.pens), q.undo, q.clear),
             element('p', {class: 'fk-note', text: 'Draw on the picture to point at the problem.'}),
             q.status, q.open, q.long,
@@ -97,6 +112,7 @@ export function createFeedback({repo, labels = ['feedback'], picture, describe, 
     q.undo.addEventListener('click', () => q.sketch.undo());
     q.clear.addEventListener('click', () => q.sketch.clear());
     q.copy.addEventListener('click', () => refresh(true));
+    for (const [kind, b] of Object.entries(q.kinds)) b.addEventListener('click', () => { if (kind !== current) show(kind, true); });
     q.share.addEventListener('click', () => { if (file) navigator.share({files: [file], title: heading}).catch(() => {}); });
     q.open.addEventListener('click', e => { if (q.open.getAttribute('aria-disabled')) e.preventDefault(); });
     q.save.addEventListener('click', e => { if (q.save.getAttribute('aria-disabled')) e.preventDefault(); });
@@ -114,11 +130,11 @@ export function createFeedback({repo, labels = ['feedback'], picture, describe, 
 
   // the picture as it is now (with the drawing) goes to the clipboard (when asked, inside a tap), Save and Share
   function refresh(toClipboard, blob = toBlob(ui.canvas)){
-    const mine = run;
+    const mine = shown;
     ui.tools();
     const copied = toClipboard ? copy(blob) : null;
     blob.then(b => {
-      if (mine !== run) return;
+      if (mine !== shown) return;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
       objectUrl = URL.createObjectURL(b);
       ui.save.href = objectUrl; ui.save.download = fileName; ui.save.removeAttribute('aria-disabled');
@@ -126,36 +142,56 @@ export function createFeedback({repo, labels = ['feedback'], picture, describe, 
       ui.share.hidden = !(navigator.canShare && navigator.canShare({files: [file]}) && window.top === window);
     }, () => {});
     if (copied) copied.then(
-      () => { if (mine === run) say(ui.sketch.strokes ? 'The picture is copied, with your drawing. Paste it into the issue.' : 'The picture is copied. Paste it into the issue, or draw on it first.'); },
-      () => { if (mine === run) say('Couldn’t copy the picture here. Save or share it, then attach it to the issue.', true); });
+      () => { if (mine === shown) say(ui.sketch.strokes ? 'The picture is copied, with your drawing. Paste it into the issue.' : COPIED); },
+      () => { if (mine === shown) say(NOT_COPIED, true); });
+  }
+
+  /* Show one of this time's pictures. `toClipboard` when called in a tap (opening the panel, a switch button): the
+     copy has to start inside it. If the whole page can't be drawn here, the project's own picture takes its place. */
+  function show(kind, toClipboard){
+    const mine = ++shown, pic = pictures[kind];
+    current = kind;
+    for (const [k, b] of Object.entries(ui.kinds)) b.setAttribute('aria-pressed', String(k === kind));
+    const copied = toClipboard ? copy(pic.then(toBlob)) : null;
+    ui.canvas.hidden = true; ui.wait.hidden = false; ui.wait.textContent = 'Making the picture…';
+    ui.save.removeAttribute('href'); ui.save.setAttribute('aria-disabled', 'true'); ui.share.hidden = true;
+    ui.undo.disabled = ui.clear.disabled = true;
+    say('Making the picture…');
+    pic.then(canvas => {
+      if (mine !== shown) return;
+      ui.sketch.setPicture(canvas);
+      ui.canvas.hidden = false; ui.wait.hidden = true;
+      refresh(false);
+      if (copied) copied.then(() => { if (mine === shown) say(COPIED); }, () => { if (mine === shown) say(NOT_COPIED, true); });
+      else say('Draw on the picture, then copy, save or share it for the issue.');
+    }, () => {
+      if (mine !== shown) return;
+      if (kind === 'page' && pictures.part){ show('part', false); return; }
+      ui.wait.textContent = 'No picture in this browser.';
+      say('Couldn’t make a picture here. The issue still says what was on screen.', true);
+    });
   }
 
   function open(){
     if (ui && !ui.root.hidden) return;
-    const info = describe(), pic = picture();   // both in the tap: this is the moment the feedback is about
+    // all in the tap: this is the moment the feedback is about. The panel isn't in the picture (data-fk-skip)
+    const info = describe();
+    pictures = {page: pagePicture(page.element || document.documentElement, page)};
+    if (picture) pictures.part = picture();
+    for (const p of Object.values(pictures)) p.catch(() => {});
     ui = ui || build();
-    const mine = ++run;
+    run++;
     fileName = info.fileName || 'feedback.png'; file = null;
-    const firstCopy = copy(pic.then(toBlob));   // still inside the tap
+    ui.kinds.part.hidden = !picture;
+    ui.pick.hidden = !picture;
     ui.sub.textContent = info.subtitle || '';
-    ui.canvas.hidden = true; ui.wait.hidden = false; ui.long.hidden = true;
+    ui.long.hidden = true;
     ui.open.removeAttribute('href'); ui.open.setAttribute('aria-disabled', 'true');
-    ui.save.removeAttribute('href'); ui.save.setAttribute('aria-disabled', 'true'); ui.share.hidden = true;
-    ui.undo.disabled = ui.clear.disabled = true;
-    say('Making the picture…');
+    show('page', true);   // still inside the tap, so the copy can start
     ui.root.hidden = false;
     ui.close.focus({preventScroll: true});
 
-    pic.then(canvas => {
-      if (mine !== run) return;
-      ui.sketch.setPicture(canvas);
-      ui.canvas.hidden = false; ui.wait.hidden = true;
-      refresh(false);
-      firstCopy.then(
-        () => { if (mine === run) say('The picture is copied. Paste it into the issue, or draw on it first.'); },
-        () => { if (mine === run) say('Couldn’t copy the picture here. Save or share it, then attach it to the issue.', true); });
-    }, () => { if (mine === run){ ui.wait.textContent = 'No picture in this browser.'; say('Couldn’t make a picture here. The issue still says what was on screen.', true); } });
-
+    const mine = run;
     Promise.resolve(info.issue).then(issue => {
       if (mine !== run) return;
       const {url, shortened} = issueUrl({repo, labels, footer, ...issue, rows: [...(issue.rows || []), ...deviceRows()]});
@@ -167,7 +203,7 @@ export function createFeedback({repo, labels = ['feedback'], picture, describe, 
 
   function close(){
     if (!ui || ui.root.hidden) return;
-    ui.root.hidden = true; run++;
+    ui.root.hidden = true; run++; shown++;
     if (objectUrl){ URL.revokeObjectURL(objectUrl); objectUrl = null; }
     file = null;
   }

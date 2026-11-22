@@ -1,13 +1,15 @@
 #!/usr/bin/env node
-/* Drives the demo pages (demo/) in headless Chromium with Playwright, at iPad and phone sizes, in light and dark mode:
-   no page errors, no console errors, no failed requests, nothing wider than the screen. On the feedback-kit page the
-   panel opens with a picture that kept the chart's CSS variables and classes, a stroke can be drawn and undone, and
-   the issue link is filled in (also with the Reopen link too long, so the fallback is used).
+/* Drives the demo pages (demo/) in a headless browser with Playwright, at desktop, iPad and phone sizes, in light and
+   dark mode: no page errors, no console errors, no failed requests, nothing wider than the screen. On the
+   feedback-kit page the panel opens with a picture of the whole page, "Just the chart" switches to the chart's own
+   picture, both keep the chart's CSS variables and classes, a stroke can be drawn and undone, the whole scrollable
+   page can be pictured, and the issue link is filled in (also with the Reopen link too long, so the fallback is used).
 
      node tools/check-demo.mjs                        (exit code 1 when something is wrong)
      node tools/check-demo.mjs --screenshots <dir>    also save a picture of each page and of the open panel
+     node tools/check-demo.mjs --browser webkit       in WebKit (Safari's engine) instead of Chromium; also firefox
 
-   Needs Playwright with Chromium. It serves the repository's root itself, so nothing else has to run. */
+   Needs Playwright with that browser. It serves the repository's root itself, so nothing else has to run. */
 import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
 import { mkdirSync, readFileSync, statSync } from 'node:fs';
@@ -16,15 +18,17 @@ import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const require = createRequire(import.meta.url);   // finds Playwright in node_modules or in a global install
-let chromium;
-try { ({ chromium } = require('playwright')); }
-catch { console.error('Playwright is not installed. Install it with:  npm install --no-save playwright && npx playwright install chromium'); process.exit(2); }
+const option = (name, otherwise) => { const k = process.argv.indexOf(name); return k > 0 ? process.argv[k + 1] || otherwise : null; };
+const browserName = option('--browser', 'chromium') || 'chromium';
+let browserType;
+try { browserType = require('playwright')[browserName]; }
+catch { console.error(`Playwright is not installed. Install it with:  npm install --no-save playwright && npx playwright install ${browserName}`); process.exit(2); }
+if (!browserType) { console.error(`No browser called ${browserName}: chromium, webkit or firefox.`); process.exit(2); }
 
-const arg = process.argv.indexOf('--screenshots');
-const shots = arg > 0 ? resolve(process.argv[arg + 1] || 'demo-screenshots') : null;
+const shots = option('--screenshots', 'demo-screenshots') && resolve(option('--screenshots', 'demo-screenshots'));
 if (shots) mkdirSync(shots, { recursive: true });
 
-const SIZES = [['ipad-landscape', 1180, 820], ['ipad-portrait', 820, 1180], ['phone', 390, 844]];
+const SIZES = [['desktop', 1440, 900], ['ipad-landscape', 1180, 820], ['ipad-portrait', 820, 1180], ['phone', 390, 844]];
 const SCHEMES = ['light', 'dark'];
 const COLORS = {   // as set in demo/feedback-kit.html
   light: { pick: '#e8590c', skyTop: '#8ec5ff' },
@@ -50,7 +54,7 @@ const fail = (where, what) => problems.push(`${where}: ${what}`);
 const hex = c => [1, 3, 5].map(k => parseInt(c.slice(k, k + 2), 16));
 const near = (a, b, d = 24) => a.every((v, k) => Math.abs(v - b[k]) <= d);
 
-const browser = await chromium.launch();
+const browser = await browserType.launch();
 try {
   {   // the repository's root (as GitHub Pages serves it) sends visitors to the demo
     const page = await browser.newPage();
@@ -60,7 +64,7 @@ try {
   }
   for (const scheme of SCHEMES) for (const [size, width, height] of SIZES) {
     const context = await browser.newContext({ viewport: { width, height }, colorScheme: scheme, hasTouch: width < 600, deviceScaleFactor: shots ? 2 : 1 });
-    await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: base });
+    if (browserName === 'chromium') await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: base });
     for (const pageName of ['index.html', 'feedback-kit.html']) {
       const where = `${pageName} ${size} ${scheme}`;
       const page = await context.newPage();
@@ -87,11 +91,21 @@ async function checkFeedback(page, where, scheme, size) {
   await page.waitForFunction(() => /^Bungee, inlined/.test(document.getElementById('font-status').textContent), null, { timeout: 5000 })
     .catch(() => fail(where, 'the web font was not inlined for the picture'));
 
-  // where the picked bar and the sky are, as fractions of the chart, to look for them in the picture
+  // the chart just under the sticky bar, so the page is scrolled and the bar is stuck. Then where the picked bar and
+  // the sky are: as fractions of the screen for the page's picture, and of the chart for the chart's own
   const spots = await page.evaluate(() => {
+    const bar0 = document.querySelector('.topbar').getBoundingClientRect().height;
+    scrollTo(0, scrollY + document.getElementById('chart').getBoundingClientRect().top - bar0 - 12);
     const svg = document.getElementById('chart').getBoundingClientRect();
     const bar = document.querySelector('.bar.is-picked').getBoundingClientRect();
-    return { bar: [(bar.left + bar.width / 2 - svg.left) / svg.width, (bar.bottom - 6 - svg.top) / svg.height], sky: [0.5, 0.01] };
+    const top = document.querySelector('.topbar').getBoundingClientRect();
+    const W = document.documentElement.clientWidth, H = document.documentElement.clientHeight;
+    const barAt = [bar.left + bar.width / 2, bar.bottom - 6];
+    return {
+      scrolled: scrollY > 0, stuck: Math.abs(top.top) < 1,
+      pageBar: [barAt[0] / W, barAt[1] / H], pageTopbar: [0.5, (top.top + top.height / 2) / H],
+      bar: [(barAt[0] - svg.left) / svg.width, (barAt[1] - svg.top) / svg.height], sky: [0.5, 0.01]
+    };
   });
 
   await page.click('#feedback');
@@ -99,6 +113,7 @@ async function checkFeedback(page, where, scheme, size) {
   await panel.waitFor({ state: 'visible' });
   // the canvas shows once the picture is ready, and "Making the picture…" goes
   await page.locator('.fk-wait').waitFor({ state: 'hidden', timeout: 5000 }).catch(() => fail(where, 'no picture in the panel'));
+  await page.waitForFunction(() => !/^Making/.test(document.querySelector('.fk-status').textContent), null, { timeout: 5000 }).catch(() => {});
 
   // a hidden canvas is really hidden (the kit's own display rule once won over the hidden attribute)
   const hiddenShows = await page.evaluate(() => {
@@ -114,11 +129,40 @@ async function checkFeedback(page, where, scheme, size) {
   });
   if (!inside) fail(where, 'the panel does not fit on the screen');
 
-  // the picture kept the colour from the class and CSS variable, and the gradient set inside the SVG
   const pixel = ([fx, fy]) => page.evaluate(([fx, fy]) => {
     const c = document.querySelector('.fk-canvas');
     return [...c.getContext('2d').getImageData(Math.round(fx * (c.width - 1)), Math.round(fy * (c.height - 1)), 1, 1).data].slice(0, 3);
   }, [fx, fy]);
+  // the picture is ready, and the message under it says whether it was copied
+  const ready = async () => {
+    await page.locator('.fk-wait').waitFor({ state: 'hidden', timeout: 5000 });
+    await page.waitForFunction(() => !/^Making/.test(document.querySelector('.fk-status').textContent), null, { timeout: 5000 });
+  };
+
+  // the whole page comes first: the size of the screen, with the chart where it is on screen
+  const pressed = await page.locator('.fk-pick [aria-pressed="true"]').textContent().catch(() => null);
+  if (pressed !== 'Whole page') fail(where, `the panel opens with "${pressed}" chosen, not the whole page`);
+  const shape = await page.evaluate(() => { const c = document.querySelector('.fk-canvas'), d = document.documentElement; return [c.width / c.height, d.clientWidth / d.clientHeight]; });
+  if (Math.abs(shape[0] - shape[1]) > 0.02) fail(where, `the page's picture is ${shape[0].toFixed(2)} wide for 1 high, the screen ${shape[1].toFixed(2)}`);
+  if (!spots.scrolled || !spots.stuck) fail(where, 'the demo page did not scroll so that the sticky bar sticks (the check needs that)');
+  const pageBar = await pixel(spots.pageBar);
+  if (!near(pageBar, hex(COLORS[scheme].pick))) fail(where, `the picked bar is rgb(${pageBar}) in the page's picture, not ${COLORS[scheme].pick}`);
+  const topbar = await pixel(spots.pageTopbar);
+  if (near(topbar, hex(COLORS[scheme].pick), 40)) fail(where, 'the sticky bar is not at the top of the page\'s picture');
+  if (shots) await page.screenshot({ path: join(shots, `feedback-page-${size}-${scheme}.png`) });
+
+  // the Share button shows only where the browser can share the picture
+  const share = await page.evaluate(() => {
+    const b = [...document.querySelectorAll('.fk-btn')].find(x => x.textContent.startsWith('Share'));
+    const can = !!(navigator.canShare && navigator.canShare({ files: [new File([''], 'x.png', { type: 'image/png' })] }));
+    return { shown: !!b && b.offsetParent !== null, can };
+  });
+  if (share.shown && !share.can) fail(where, 'Share… shows, but this browser can\'t share the picture');
+
+  // "Just the chart": the chart's own picture kept the colour from the class and CSS variable, and the gradient set
+  // inside the SVG
+  await page.locator('.fk-pick .fk-btn', { hasText: 'Just the chart' }).click();
+  await ready().catch(() => fail(where, 'no picture after switching to the chart'));
   const bar = await pixel(spots.bar), sky = await pixel(spots.sky);
   if (!near(bar, hex(COLORS[scheme].pick))) fail(where, `the picked bar is rgb(${bar}) in the picture, not ${COLORS[scheme].pick}`);
   if (!near(sky, hex(COLORS[scheme].skyTop))) fail(where, `the sky is rgb(${sky}) in the picture, not ${COLORS[scheme].skyTop}`);
@@ -168,6 +212,15 @@ async function checkFeedback(page, where, scheme, size) {
   if (long && long.url.length > 8000) fail(where, `the issue link is ${long.url.length} characters long`);
   await page.click('.fk-x');
   await page.uncheck('#long-link');
+
+  // the whole scrollable page: as tall as the page, not only the screen
+  await page.check('#full-page');
+  await page.click('#feedback');
+  await ready().catch(() => fail(where, 'no picture of the whole scrollable page'));
+  const tall = await page.evaluate(() => { const c = document.querySelector('.fk-canvas'), d = document.documentElement; return [c.height / c.width, d.scrollHeight / d.clientWidth]; });
+  if (Math.abs(tall[0] - tall[1]) > 0.02) fail(where, `the whole page's picture is ${tall[0].toFixed(2)} high for 1 wide, the page ${tall[1].toFixed(2)}`);
+  await page.click('.fk-x');
+  await page.uncheck('#full-page');
 }
 
 async function issueOf(page) {
@@ -181,4 +234,4 @@ async function issueOf(page) {
 }
 
 if (problems.length) { problems.forEach(p => console.log('PROBLEM ' + p)); process.exit(1); }
-console.log(`The demo works at ${SIZES.length} sizes in light and dark mode${shots ? `; screenshots in ${shots}` : ''}.`);
+console.log(`The demo works in ${browserName} at ${SIZES.length} sizes in light and dark mode${shots ? `; screenshots in ${shots}` : ''}.`);

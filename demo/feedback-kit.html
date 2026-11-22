@@ -37,19 +37,31 @@
   .controls .picked{min-width:9ch;text-align:center;font-weight:600}
   .controls .primary{margin-left:auto}
   @media (max-width:520px){ .controls .primary{margin-left:0;flex-basis:100%} }
+  .option+.option{margin-top:10px}
+  .page{min-height:170vh}
+  .more{margin-top:16px}
+  .more-grid{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:end;margin:12px 0}
+  .field{display:grid;gap:4px}
+  .field input,.field select{font:inherit;min-height:40px;padding:6px 10px;border-radius:8px;border:1px solid var(--demo-rule);background:var(--demo-bg);color:inherit}
+  .tries{height:150px;overflow:auto;margin:0;padding:0 0 0 36px;border:1px solid var(--demo-rule);border-radius:10px}
+  .tries li{padding:8px 4px;border-bottom:1px solid var(--demo-rule)}
   .option{display:flex;gap:10px;align-items:flex-start;cursor:pointer}
   .option input{width:20px;height:20px;margin:2px 0 0;flex:none}
+  .topbar{position:sticky;top:0;z-index:2;display:flex;gap:12px;align-items:center;justify-content:space-between;
+    padding:10px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px));
+    background:color-mix(in srgb,var(--demo-surface) 92%,transparent);border-bottom:1px solid var(--demo-rule);font-size:15px}
   .layout{display:grid;gap:16px;grid-template-columns:minmax(0,1fr)}
   @media (min-width:1000px){ .layout{grid-template-columns:minmax(0,1fr) 320px;align-items:start} }
 </style>
 </head>
 <body>
+<nav class="topbar" aria-label="Demos"><a href="./">web-kit demos</a><span class="muted">feedback-kit</span></nav>
 <main class="page">
-  <p class="crumb"><a href="./">web-kit demos</a></p>
   <h1>feedback-kit</h1>
-  <p class="lead">Tap <strong>Send feedback</strong>: the panel shows a picture of the chart as it is now, to draw on,
-    and links to a new issue filled in with what was on screen. The module comes from <code>../feedback-kit/</code>,
-    the branch this page was served from.</p>
+  <p class="lead">Tap <strong>Send feedback</strong>: the panel shows a picture of the page as it is now, to draw on,
+    and links to a new issue filled in with what was on screen. <strong>Just the chart</strong> switches to the
+    picture this page gives of its own part. The module comes from <code>../feedback-kit/</code>, the branch this page
+    was served from.</p>
 
   <div class="layout">
     <section class="card" aria-label="Chart">
@@ -82,7 +94,8 @@
       <section class="card">
         <h2>What to look at</h2>
         <ul class="small">
-          <li>The picture keeps the title's web font (<span id="font-status">loading…</span>), the colours from CSS
+          <li>The whole page is redrawn from what is on screen, with the sticky bar at the top where it is now.</li>
+          <li>Both pictures keep the title's web font (<span id="font-status">loading…</span>), the colours from CSS
             variables and classes, and the gradient whose colours are set inside the SVG.</li>
           <li>Draw with a finger, the Pencil or the mouse; Undo (or Ctrl/Cmd+Z) and Clear.</li>
           <li>Try it in light and dark mode, and upright and sideways on the iPad.</li>
@@ -92,11 +105,26 @@
         <h2>The issue</h2>
         <p class="small">It opens in <a href="https://github.com/bremondr/web-kit/issues">bremondr/web-kit</a> with the
           <code>demo</code> label. It is a real issue: submit it only if you mean to, and close it afterwards.</p>
+        <label class="option small"><input type="checkbox" id="full-page">
+          <span>Picture the whole scrollable page, not only what is on screen.</span></label>
         <label class="option small"><input type="checkbox" id="long-link">
           <span>Make the Reopen link too long, to see its fallback text and the panel's note.</span></label>
       </section>
     </aside>
   </div>
+
+  <section class="card more" aria-label="More of the page">
+    <h2>More of the page</h2>
+    <p class="small muted">The page is longer than the screen on purpose: the whole page's picture shows what is on
+      screen, and with the checkbox above, everything down to here. It also keeps what is typed and chosen below, and
+      where the list is scrolled to.</p>
+    <div class="more-grid">
+      <label class="field small">Team<input id="team" value="Blue Hawks"></label>
+      <label class="field small">Field<select id="field"><option>Grass</option><option selected>Beach</option><option>Indoor</option></select></label>
+      <label class="option small"><input type="checkbox" id="mixed" checked><span>Mixed team</span></label>
+    </div>
+    <ol class="tries" id="tries" aria-label="Recent tries"></ol>
+  </section>
 </main>
 <script type="module" src="feedback-kit.js"></script>
 </body>

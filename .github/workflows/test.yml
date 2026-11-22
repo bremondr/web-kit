@@ -26,6 +26,11 @@ jobs:
 
   demo:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]   # webkit: Safari's engine, as on the iPad
+    name: demo (${{ matrix.browser }})
     steps:
       - uses: actions/checkout@v7
 
@@ -34,10 +39,18 @@ jobs:
           node-version: 22
 
       # only for this check: the modules themselves use no packages
-      - name: Playwright and Chromium
+      - name: Playwright and the browser
         run: |
           npm install --no-save --no-package-lock playwright@1.63.0
-          npx playwright install --with-deps chromium
+          npx playwright install --with-deps ${{ matrix.browser }}
 
-      - name: Demo pages in headless Chromium
-        run: node tools/check-demo.mjs
+      - name: Demo pages in headless ${{ matrix.browser }}
+        run: node tools/check-demo.mjs --browser ${{ matrix.browser }} --screenshots demo-screenshots
+
+      # the pictures of each page and of the open panel, to look at from the run's summary
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: demo-screenshots-${{ matrix.browser }}
+          path: demo-screenshots/
+          retention-days: 14
