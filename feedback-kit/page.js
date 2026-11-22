@@ -233,3 +233,39 @@ export async function pagePicture(element = document.documentElement, {area = 's
   const scale = Math.min(Math.max(1, devicePixelRatio || 1), maxSize / Math.max(w, h));
   return drawSvg(new XMLSerializer().serializeToString(svg), w, h, {background: bg, scale});
 }
+
+/* screenPicture({maxSize}) → Promise<canvas>
+   A real screenshot from the browser's screen capture (getDisplayMedia), on desktop browsers that have it. The
+   browser asks the person each time, so call it from a tap; Chrome and Edge offer this tab first. One frame is
+   taken and the capture stops at once. Rejects when there is no screen capture here, or the person says no.
+   canCaptureScreen() says whether this browser has it at all (not iPad or iPhone Safari, nor phones). */
+export function canCaptureScreen(){
+  return !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) && !matchMedia('(pointer: coarse)').matches;
+}
+
+export async function screenPicture({maxSize = 2400} = {}){
+  if (!canCaptureScreen()) throw new Error('No screen capture in this browser.');
+  const stream = await navigator.mediaDevices.getDisplayMedia({
+    video: {displaySurface: 'browser'}, audio: false,
+    preferCurrentTab: true, selfBrowserSurface: 'include', surfaceSwitching: 'exclude', monitorTypeSurfaces: 'exclude'
+  });
+  try {
+    const video = document.createElement('video');
+    video.muted = true; video.playsInline = true; video.srcObject = stream;
+    await video.play();
+    // a moment on, so the first frame isn't empty and the browser's "sharing" notice has settled; then wait for a
+    // frame with a size (at most two seconds)
+    await new Promise(ok => setTimeout(ok, 250));
+    for (let t = 0; t < 40 && (video.readyState < 2 || !video.videoWidth); t++) await new Promise(ok => setTimeout(ok, 50));
+    const w = video.videoWidth, h = video.videoHeight;
+    if (!w || !h) throw new Error('The screen capture gave no picture.');
+    const scale = Math.min(1, maxSize / Math.max(w, h));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(w * scale); canvas.height = Math.round(h * scale);
+    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+    video.srcObject = null;
+    return canvas;
+  } finally {
+    stream.getTracks().forEach(t => t.stop());
+  }
+}

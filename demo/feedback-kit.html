@@ -38,6 +38,9 @@
   .controls .primary{margin-left:auto}
   @media (max-width:520px){ .controls .primary{margin-left:0;flex-basis:100%} }
   .option+.option{margin-top:10px}
+  .modes{border:1px solid var(--demo-rule);border-radius:10px;margin:12px 0;padding:8px 12px 12px}
+  .modes legend{padding:0 4px;color:var(--demo-muted)}
+  .modes .option+.option{margin-top:6px}
   .page{min-height:170vh}
   .more{margin-top:16px}
   .more-grid{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:end;margin:12px 0}
@@ -99,6 +102,7 @@
             variables and classes, and the gradient whose colours are set inside the SVG.</li>
           <li>Draw with a finger, the Pencil or the mouse; Undo (or Ctrl/Cmd+Z) and Clear.</li>
           <li>Take a screenshot yourself, then paste it, drop it on the panel, or choose it with "Use my screenshot…".</li>
+          <li>In a desktop browser, "Take a real screenshot" asks to share this tab and takes an exact picture.</li>
           <li>Try it in light and dark mode, and upright and sideways on the iPad.</li>
         </ul>
       </section>
@@ -106,6 +110,12 @@
         <h2>The issue</h2>
         <p class="small">It opens in <a href="https://github.com/bremondr/web-kit/issues">bremondr/web-kit</a> with the
           <code>demo</code> label. It is a real issue: submit it only if you mean to, and close it afterwards.</p>
+        <fieldset class="modes small">
+          <legend>Real screen capture (desktop browsers)</legend>
+          <label class="option"><input type="radio" name="capture" value="button" checked><span>A button in the panel</span></label>
+          <label class="option"><input type="radio" name="capture" value="tap"><span>Right at the tap, before the panel</span></label>
+          <label class="option"><input type="radio" name="capture" value="off"><span>Off</span></label>
+        </fieldset>
         <label class="option small"><input type="checkbox" id="full-page">
           <span>Picture the whole scrollable page, not only what is on screen.</span></label>
         <label class="option small"><input type="checkbox" id="long-link">
