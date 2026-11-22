@@ -569,39 +569,41 @@ async function issueOf(page) {
 if (problems.length) { problems.forEach(p => console.log('PROBLEM ' + p)); process.exit(1); }
 console.log(`The demo works in ${browserName} at ${SIZES.length} sizes in light and dark mode${shots ? `; screenshots in ${shots}` : ''}.`);
 
-// TEMPORARY DEBUG (#20): how soon different canvas streams give a frame in a video here, and what colour it is
+// TEMPORARY DEBUG (#20): how often different canvas streams give no frame in a video within 3 s, tried in turn
 async function probes(){
-  const out = [], wait = ms => new Promise(ok => setTimeout(ok, ms));
+  const wait = ms => new Promise(ok => setTimeout(ok, ms));
   const variants = {
-    'detached fps20': { attach: false, fps: 20 },
-    'attached fps20': { attach: true, fps: 20 },
-    'detached nofps': { attach: false },
-    'detached fps0+requestFrame': { attach: false, fps: 0 },
-    'detached fps20 rAF-paint': { attach: false, fps: 20, raf: true },
+    'A detached fps20 interval50 (as now)': { fps: 20, every: 50 },
+    'B detached fps20 interval37': { fps: 20, every: 37 },
+    'C detached nofps interval50': { every: 50 },
+    'D attached fps20 interval50': { fps: 20, every: 50, attach: true },
+    'E detached fps20 rAF only': { fps: 20, raf: true },
+    'F detached fps0 requestFrame interval50': { fps: 0, every: 50 },
   };
-  for (const [name, o] of Object.entries(variants)){
+  const names = Object.keys(variants), res = {};
+  for (let round = 0; round < 8; round++) for (let k = 0; k < names.length; k++){
+    const name = names[(k + round) % names.length], o = variants[name];
     const c = document.createElement('canvas'); c.width = 1280; c.height = 800;
     c.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;opacity:0';
     if (o.attach) document.body.appendChild(c);
     const x = c.getContext('2d');
     const s = o.fps === undefined ? c.captureStream() : c.captureStream(o.fps), tr = s.getVideoTracks()[0];
     let on = true;
-    const paint = () => { x.fillStyle = '#12ab34'; x.fillRect(0, 0, c.width, c.height); if (tr.requestFrame) tr.requestFrame(); };
+    const paint = () => { x.fillStyle = '#12ab34'; x.fillRect(0, 0, c.width, c.height); if (o.fps === 0) tr.requestFrame(); };
     paint();
     if (o.raf) { const f = () => { if (on) { paint(); requestAnimationFrame(f); } }; requestAnimationFrame(f); }
-    const iv = setInterval(paint, 50);
+    const iv = o.every && setInterval(paint, o.every);
     const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.autoplay = true;
     v.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;opacity:0';
     v.srcObject = s; document.documentElement.appendChild(v);
     const t0 = performance.now(); v.play().catch(() => {});
-    let t = 0; while (t < 100 && (v.readyState < 2 || !v.videoWidth)) { await wait(40); t++; }
-    const firstMs = Math.round(performance.now() - t0);
-    const col = () => { const k = document.createElement('canvas'); k.width = 8; k.height = 8; const g = k.getContext('2d'); g.drawImage(v, 0, 0, 8, 8); return [...g.getImageData(4, 4, 1, 1).data].join(','); };
-    const c1 = v.videoWidth ? col() : '-';
-    await wait(500);
-    const c2 = v.videoWidth ? col() : '-';
-    out.push(`${name}: frame after ${firstMs}ms rs=${v.readyState} vw=${v.videoWidth} muted=${tr.muted} colour then=${c1} +500ms=${c2}`);
-    on = false; clearInterval(iv); tr.stop(); v.srcObject = null; v.remove(); c.remove();
+    while (performance.now() - t0 < 3000 && (v.readyState < 2 || !v.videoWidth)) await wait(20);
+    const ms = Math.round(performance.now() - t0), ok = v.videoWidth > 0;
+    let col = '-';
+    if (ok){ const k2 = document.createElement('canvas'); k2.width = 8; k2.height = 8; const g = k2.getContext('2d'); g.drawImage(v, 0, 0, 8, 8); col = [...g.getImageData(4, 4, 1, 1).data].slice(0, 3).join(','); }
+    const r = res[name] = res[name] || { tries: 0, noFrame: 0, notGreen: 0, slowest: 0 };
+    r.tries++; if (!ok) r.noFrame++; else { r.slowest = Math.max(r.slowest, ms); if (col !== '18,171,52') r.notGreen++; }
+    on = false; if (iv) clearInterval(iv); tr.stop(); v.srcObject = null; v.remove(); c.remove();
   }
-  return out;
+  return names.map(n => `PROBE ${n}: ${JSON.stringify(res[n])}`);
 }
