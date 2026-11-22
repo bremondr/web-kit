@@ -2,7 +2,7 @@
 
 Each version is released as the tag `git-store-kit-vX.Y.Z`. A new major version (the first number) means a project using the kit may need changes; the notes say which.
 
-## 1.0.0 (unreleased)
+## 1.0.0 (2026-11-22)
 
 - First release.
 - `createGitStore`: an app's items as JSON files in GitHub repos, one file per item (`<folder>/<id>.json`), every save a commit.
