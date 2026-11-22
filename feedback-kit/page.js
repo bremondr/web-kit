@@ -249,23 +249,30 @@ export async function screenPicture({maxSize = 2400} = {}){
     video: {displaySurface: 'browser'}, audio: false,
     preferCurrentTab: true, selfBrowserSurface: 'include', surfaceSwitching: 'exclude', monitorTypeSurfaces: 'exclude'
   });
+  // the stream plays in a video that is on the page but invisible: Safari may not start a video that isn't
+  // on the page. Every wait has a limit, so a capture that gives no frame fails instead of hanging
+  const video = document.createElement('video');
+  video.muted = true; video.playsInline = true; video.autoplay = true;
+  video.setAttribute('data-fk-skip', ''); video.setAttribute('aria-hidden', 'true');
+  video.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;opacity:0;pointer-events:none';
+  const wait = ms => new Promise(ok => setTimeout(ok, ms));
   try {
-    const video = document.createElement('video');
-    video.muted = true; video.playsInline = true; video.srcObject = stream;
-    await video.play();
+    video.srcObject = stream;
+    document.documentElement.appendChild(video);
+    await Promise.race([video.play().catch(() => {}), wait(1500)]);
     // a moment on, so the first frame isn't empty and the browser's "sharing" notice has settled; then wait for a
     // frame with a size (at most two seconds)
-    await new Promise(ok => setTimeout(ok, 250));
-    for (let t = 0; t < 40 && (video.readyState < 2 || !video.videoWidth); t++) await new Promise(ok => setTimeout(ok, 50));
+    await wait(250);
+    for (let t = 0; t < 40 && (video.readyState < 2 || !video.videoWidth); t++) await wait(50);
     const w = video.videoWidth, h = video.videoHeight;
     if (!w || !h) throw new Error('The screen capture gave no picture.');
     const scale = Math.min(1, maxSize / Math.max(w, h));
     const canvas = document.createElement('canvas');
     canvas.width = Math.round(w * scale); canvas.height = Math.round(h * scale);
     canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-    video.srcObject = null;
     return canvas;
   } finally {
     stream.getTracks().forEach(t => t.stop());
+    video.srcObject = null; video.remove();
   }
 }
