@@ -7,6 +7,7 @@ It began in [Ultimate Playbook](https://github.com/bremondr/ultimate-playbook) b
 ## What the person sees
 
 1. They tap your "Send feedback" button. A panel fills most of the screen with a picture of the page, taken at the moment of the tap. If your app gives a picture of its own part (a chart, a field), a switch shows that instead.
+   Or they use **their own screenshot**: "Use my screenshot…" chooses one (on the iPad, from Photos), and pasting (Ctrl+V, ⌘V) or dropping an image on the panel works too. It's exact, where the redrawn page is a close copy.
 2. They can draw on the picture to point at the problem: four pen colours, Undo (also Ctrl/Cmd+Z), Clear. A finger, the Apple Pencil or the mouse all work.
 3. The picture is on the clipboard: copied when the panel opens and again after every stroke. **Share…** (where the browser can share files, as on the iPad) and **Save picture** are there too.
 4. **Write the issue on GitHub** opens a new issue with the title, labels and body filled in. They paste the picture, say what's wrong and tap Submit.
@@ -75,6 +76,7 @@ Both are taken in the tap, so they show the same moment.
   - `element`: picture one element instead of the page; `maxSize`: the longer side in pixels, at most (default 2400); `background`.
   
   It keeps what is typed in fields, where scrolled areas are scrolled to, fixed and sticky parts where they are, canvases, and `::before`/`::after`. Give `data-fk-skip` to anything that shouldn't be in it; the panel has it. See Limits for what it can't copy.
+- **The person's own screenshot**, chosen, pasted or dropped, replaces either one. It is scaled down to `page.maxSize` like the others. It doesn't come from a tap, so it is copied after the first stroke or with Copy picture, not at once.
 - **The app's own part** (`picture`, optional) is a switch in the panel labelled `pictureLabel` (default "Just this part"). For an SVG, `svgPicture(svg, {fonts, vars})`; for anything else, any function that returns a promise of a canvas. If the whole page can't be drawn in a browser, the panel shows this one.
 
 ### Theming

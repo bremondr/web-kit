@@ -2,8 +2,8 @@
 /* Drives the demo pages (demo/) in a headless browser with Playwright, at desktop, iPad and phone sizes, in light and
    dark mode: no page errors, no console errors, no failed requests, nothing wider than the screen. On the
    feedback-kit page the panel opens with a picture of the whole page, "Just the chart" switches to the chart's own
-   picture, both keep the chart's CSS variables and classes, a stroke can be drawn and undone, the whole scrollable
-   page can be pictured, and the issue link is filled in (also with the Reopen link too long, so the fallback is used).
+   picture, both keep the chart's CSS variables and classes, a stroke can be drawn and undone, the person's own
+   screenshot can be chosen, pasted or dropped instead, the whole scrollable page can be pictured, and the issue link is filled in (also with the Reopen link too long, so the fallback is used).
 
      node tools/check-demo.mjs                        (exit code 1 when something is wrong)
      node tools/check-demo.mjs --screenshots <dir>    also save a picture of each page and of the open panel
@@ -212,6 +212,43 @@ async function checkFeedback(page, where, scheme, size) {
   if (long && long.url.length > 8000) fail(where, `the issue link is ${long.url.length} characters long`);
   await page.click('.fk-x');
   await page.uncheck('#long-link');
+
+  // your own screenshot: chosen with the button, pasted, or dropped, it becomes the picture. Each test picture is one
+  // colour, so the picture's middle says which one arrived
+  const testPicture = color => page.evaluate(color => {
+    const c = document.createElement('canvas'); c.width = 320; c.height = 200;
+    const x = c.getContext('2d'); x.fillStyle = color; x.fillRect(0, 0, 320, 200);
+    return c.toDataURL('image/png').split(',')[1];
+  }, color);
+  const own = async (how, color) => {
+    await ready().catch(() => {});
+    if (!near(await pixel([0.5, 0.5]), hex(color), 6)) fail(where, `the screenshot ${how} is not the picture (rgb(${await pixel([0.5, 0.5])}) in the middle)`);
+    const chosen = await page.locator('.fk-pick [aria-pressed="true"]').textContent().catch(() => null);
+    if (chosen !== 'Your screenshot') fail(where, `after a screenshot ${how}, "${chosen}" is chosen`);
+  };
+  await page.click('#feedback');
+  await ready();
+  await page.locator('.fk-own input[type=file]').setInputFiles({ name: 'shot.png', mimeType: 'image/png', buffer: Buffer.from(await testPicture('#00a86b'), 'base64') });
+  await own('chosen', '#00a86b');
+  const sent = async (type, color) => page.evaluate(async ([type, b64]) => {
+    const bytes = Uint8Array.from(atob(b64), ch => ch.charCodeAt(0));
+    const dt = new DataTransfer(); dt.items.add(new File([bytes], 'shot.png', { type: 'image/png' }));
+    if (type === 'paste') document.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
+    else {
+      const stage = document.querySelector('.fk-stage');
+      stage.dispatchEvent(new DragEvent('dragover', { dataTransfer: dt, bubbles: true, cancelable: true }));
+      stage.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true }));
+    }
+  }, [type, await testPicture(color)]);
+  await sent('paste', '#7b2ff7');
+  await own('pasted', '#7b2ff7');
+  await sent('drop', '#ffcc00');
+  await own('dropped', '#ffcc00');
+  if (await page.locator('.fk').evaluate(e => e.classList.contains('fk-drop'))) fail(where, 'the panel still shows the drop outline after the drop');
+  await page.locator('.fk-pick .fk-btn', { hasText: 'Whole page' }).click();
+  await ready().catch(() => fail(where, 'no picture after switching back to the whole page'));
+  if (near(await pixel([0.5, 0.5]), hex('#ffcc00'), 6)) fail(where, 'switching back to the whole page still shows the screenshot');
+  await page.click('.fk-x');
 
   // the whole scrollable page: as tall as the page, not only the screen
   await page.check('#full-page');
