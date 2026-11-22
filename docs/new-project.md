@@ -15,6 +15,7 @@ A new static web app can start with everything Ultimate Playbook and Protogames 
 | `CLAUDE.md`, `README.md` | skeletons in the projects' style: ground rules, checks, workflow, previews, feedback issues | `template/` |
 | `site.json` | what Pages publishes, the checks before publishing, the Feedback link on previews | `template/` |
 | `vendor.json` | no modules yet; `js/vendor/` is where they go | `template/` |
+| `package.json` | only `{"type": "module"}`: Node then runs the project's `.js` files as ES modules in tests, without the `MODULE_TYPELESS_PACKAGE_JSON` warning. It is not for packages, and the site build doesn't publish it. Add `scripts` to it if you want `npm test`, but keep `"type"`. | `template/` |
 | `.github/workflows/test.yml` | `node --test` and `update-vendor.mjs --verify` on every pull request | `template/` |
 | `.nojekyll`, `.gitignore` | files served as they are; the build's output not committed | `template/` |
 | `tools/build-site.mjs`, `tools/preview-runtime.js`, `.github/workflows/pages.yml` | the site and the previews | `consumer/` |
