@@ -58,6 +58,8 @@ Follow the module's README: its "Setting it up in a project" ([feedback-kit](../
 
 If the project has a **service worker with a list of files** to keep offline, add the module's files to it. If it also caches web fonts, read the module's notes on offline use.
 
+If the project's **Node tests import its own `.js` modules** (or a module's, as git-store-kit's tests do) and the project has a `package.json` without `"type"`, for example one for `npm test`, Node warns `MODULE_TYPELESS_PACKAGE_JSON` for every such file. Add `"type": "module"` to that `package.json`. A root `package.json` is never published by web-kit's site build. A `package.json` with only `{"type": "module"}` in a subfolder also works for the files below it, as in Protogames' `app/package.json`, but must then be left out of the site in `site.json`.
+
 Optionally, guard the copies in the project's own checks: no file in `js/vendor/<module>/` should import from outside that folder. Ultimate Playbook's [`tools/check-imports.mjs`](https://github.com/bremondr/ultimate-playbook/blob/main/tools/check-imports.mjs) does this.
 
 ## 5. Tell the project's docs and Claude
@@ -245,6 +247,7 @@ The consumer files (`update-vendor.mjs` and `update-vendor.yml`, and for preview
 | "feedback-kit: 2.0.0 is a new major version" in the log, and no pull request | New major versions aren't taken by themselves. See [Taking a new major version](#taking-a-new-major-version). |
 | `--verify` says a file differs | Someone edited the copy. Move the change into web-kit (or drop it), then run `node tools/update-vendor.mjs <module>@<version>` to restore the copy. |
 | "No vendor.json here" | Run the script from the project's root. |
+| Node warns `MODULE_TYPELESS_PACKAGE_JSON` when the tests run | A `package.json` without `"type"` sits above the project's ES modules. Add `"type": "module"` to it (see [step 4](#4-wire-it-in)). |
 
 ## A prompt for Claude Code
 

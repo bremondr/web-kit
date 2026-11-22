@@ -8,6 +8,7 @@ Read `README.md` first: what the app does, how the code is laid out, and the che
 ## Ground rules
 
 - Plain HTML, CSS and ES modules. No build step, no packages, no frameworks. Serve the folder (`python3 -m http.server`) to run it.
+- `package.json` holds only `"type": "module"`, so Node runs the `.js` files as ES modules in tests (no `MODULE_TYPELESS_PACKAGE_JSON` warning). Keep it; it is not for packages, and the site build doesn't publish it.
 - Logic that doesn't need the page goes in modules without DOM code, so it can be tested in plain Node (like `js/tally.js`).
 - `js/vendor/` holds copies of modules released in [bremondr/web-kit](https://github.com/bremondr/web-kit) (versions in `vendor.json`). Don't edit them here: change the module in web-kit, release it, then run `node tools/update-vendor.mjs` (or wait for the daily "Update vendored modules" pull request). Code of this app that uses a module stays outside `js/vendor/`.
 - `tools/update-vendor.mjs`, `tools/build-site.mjs`, `tools/preview-runtime.js`, `.github/workflows/update-vendor.yml` and `.github/workflows/pages.yml` are copies of web-kit's consumer files. Don't edit them here either: what differs for this app goes in `site.json` and `vendor.json`.
