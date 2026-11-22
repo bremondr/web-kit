@@ -5,7 +5,7 @@ Reusable modules for static web apps: plain ES modules and CSS, with no dependen
 | Module | What it does | Newest | Used by |
 |---|---|---|---|
 | [`feedback-kit/`](feedback-kit/) | "Send feedback": a GitHub issue filled in with what was on screen, plus a picture to draw on | see [releases](https://github.com/bremondr/web-kit/releases) | [Ultimate Playbook](https://github.com/bremondr/ultimate-playbook), [Protogames](https://github.com/bremondr/protogames) |
-| [`git-store-kit/`](git-store-kit/) | An app's items as JSON files in GitHub repos, one file per item, every save a commit: public or private repos, tokens per repo, conflicts, history, offline copy | not released yet | planned: Ultimate Playbook (team drills), Protogames |
+| [`git-store-kit/`](git-store-kit/) | An app's items as JSON files in GitHub repos, one file per item, every save a commit: public or private repos, tokens per repo, conflicts, history, offline copy | see [releases](https://github.com/bremondr/web-kit/releases) | planned: Ultimate Playbook (team drills), Protogames |
 
 ## How it works
 
