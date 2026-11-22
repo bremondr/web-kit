@@ -7,7 +7,7 @@ Besides the modules, web-kit holds what every project needs around its app: [pul
 | Module | What it does | Newest | Used by |
 |---|---|---|---|
 | [`feedback-kit/`](feedback-kit/) | "Send feedback": a GitHub issue filled in with what was on screen, plus a picture to draw on | see [releases](https://github.com/bremondr/web-kit/releases) | [Ultimate Playbook](https://github.com/bremondr/ultimate-playbook), [Protogames](https://github.com/bremondr/protogames) |
-| [`git-store-kit/`](git-store-kit/) | An app's items as JSON files in GitHub repos, one file per item, every save a commit: public or private repos, tokens per repo, conflicts, history, offline copy | see [releases](https://github.com/bremondr/web-kit/releases) | [Protogames](https://github.com/bremondr/protogames); planned: Ultimate Playbook (team drills) |
+| [`git-store-kit/`](git-store-kit/) | An app's items as JSON files in GitHub repos, one file per item, every save a commit: public or private repos, tokens per repo, conflicts, history, offline copy | see [releases](https://github.com/bremondr/web-kit/releases) | [Ultimate Playbook](https://github.com/bremondr/ultimate-playbook) (team drills), [Protogames](https://github.com/bremondr/protogames) (projects in a repo) |
 
 ## How it works
 

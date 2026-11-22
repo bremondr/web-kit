@@ -1,4 +1,4 @@
 {
-  "bremondr/ultimate-playbook": ["feedback-kit"],
+  "bremondr/ultimate-playbook": ["feedback-kit", "git-store-kit"],
   "bremondr/protogames": ["feedback-kit", "git-store-kit"]
 }
