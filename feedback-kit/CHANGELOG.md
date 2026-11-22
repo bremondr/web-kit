@@ -2,7 +2,7 @@
 
 Each version is released as the tag `feedback-kit-vX.Y.Z`. A new major version (the first number) means a project using the kit may need changes; the notes say which.
 
-## 2.0.0 (unreleased)
+## 2.0.0 (2026-11-22)
 
 The picture is now the whole page, taken at the tap, and the app's own picture becomes a switch in the panel.
 
