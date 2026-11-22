@@ -44,6 +44,10 @@ export function deviceRows(){
 const COPIED = 'The picture is copied. Paste it into the issue, or draw on it first.';
 const NOT_COPIED = 'Couldn’t copy the picture here. Save or share it, then attach it to the issue.';
 
+// the first picture file in a paste or a drop
+const imageIn = data => [...(data?.files || [])].find(f => f.type.startsWith('image/'))
+  || [...(data?.items || [])].filter(i => i.kind === 'file' && i.type.startsWith('image/')).map(i => i.getAsFile()).find(Boolean) || null;
+
 const toBlob = canvas => new Promise((ok, no) => canvas.toBlob(b => b ? ok(b) : no(new Error('no picture')), 'image/png'));
 
 /* Copy a picture given as a promise. Safari allows clipboard.write only during the tap itself, so the call has to
@@ -84,9 +88,13 @@ export function createFeedback({repo, labels = ['feedback'], picture = null, pic
     q.copy = element('button', {type: 'button', class: 'fk-btn', text: 'Copy picture'});
     q.kinds = {
       page: element('button', {type: 'button', class: 'fk-btn', 'aria-pressed': 'true', text: 'Whole page'}),
-      part: element('button', {type: 'button', class: 'fk-btn', 'aria-pressed': 'false', text: pictureLabel})
+      part: element('button', {type: 'button', class: 'fk-btn', 'aria-pressed': 'false', text: pictureLabel}),
+      own: element('button', {type: 'button', class: 'fk-btn', 'aria-pressed': 'false', text: 'Your screenshot', hidden: true})
     };
     q.pick = element('div', {class: 'fk-pick', role: 'group', 'aria-label': 'Picture'}, ...Object.values(q.kinds));
+    q.file = element('input', {type: 'file', accept: 'image/*', hidden: true, tabindex: '-1', 'aria-hidden': 'true'});
+    q.mine = element('button', {type: 'button', class: 'fk-btn fk-mine', text: 'Use my screenshot…'});
+    q.mineNote = element('p', {class: 'fk-note', text: 'Or paste a screenshot (Ctrl+V, ⌘V) or drop one on the picture.'});
     q.share = element('button', {type: 'button', class: 'fk-btn', text: 'Share…', hidden: true});
     q.save = element('a', {class: 'fk-btn', 'aria-disabled': 'true', text: 'Save picture'});
     q.close = element('button', {type: 'button', class: 'fk-x', 'aria-label': 'Close', text: '×'});
@@ -98,6 +106,7 @@ export function createFeedback({repo, labels = ['feedback'], picture = null, pic
           element('div', {class: 'fk-stage'}, q.canvas, q.wait),
           element('div', {class: 'fk-side'},
             q.pick,
+            element('div', {class: 'fk-own'}, q.mine, q.file, q.mineNote),
             element('div', {class: 'fk-tools'}, element('div', {class: 'fk-pens', role: 'group', 'aria-label': 'Pen colour'}, ...q.pens), q.undo, q.clear),
             element('p', {class: 'fk-note', text: 'Draw on the picture to point at the problem.'}),
             q.status, q.open, q.long,
@@ -113,6 +122,22 @@ export function createFeedback({repo, labels = ['feedback'], picture = null, pic
     q.clear.addEventListener('click', () => q.sketch.clear());
     q.copy.addEventListener('click', () => refresh(true));
     for (const [kind, b] of Object.entries(q.kinds)) b.addEventListener('click', () => { if (kind !== current) show(kind, true); });
+    // the person's own screenshot: chosen, pasted or dropped
+    q.mine.addEventListener('click', () => { q.file.value = ''; q.file.click(); });
+    q.file.addEventListener('change', () => { if (q.file.files[0]) useOwn(q.file.files[0]); });
+    document.addEventListener('paste', e => {
+      if (q.root.hidden) return;
+      const f = imageIn(e.clipboardData);
+      if (f){ e.preventDefault(); useOwn(f); }
+    });
+    q.root.addEventListener('dragover', e => { if ([...(e.dataTransfer?.items || [])].some(i => i.kind === 'file')){ e.preventDefault(); q.root.classList.add('fk-drop'); } });
+    q.root.addEventListener('dragleave', e => { if (e.target === q.root || !q.root.contains(e.relatedTarget)) q.root.classList.remove('fk-drop'); });
+    q.root.addEventListener('drop', e => {
+      q.root.classList.remove('fk-drop');
+      const f = imageIn(e.dataTransfer);
+      if (f || e.dataTransfer?.files.length) e.preventDefault();
+      if (f) useOwn(f); else if (e.dataTransfer?.files.length) say('That isn’t a picture. Drop a screenshot (PNG or JPEG).', true);
+    });
     q.share.addEventListener('click', () => { if (file) navigator.share({files: [file], title: heading}).catch(() => {}); });
     q.open.addEventListener('click', e => { if (q.open.getAttribute('aria-disabled')) e.preventDefault(); });
     q.save.addEventListener('click', e => { if (q.save.getAttribute('aria-disabled')) e.preventDefault(); });
@@ -163,13 +188,35 @@ export function createFeedback({repo, labels = ['feedback'], picture = null, pic
       ui.canvas.hidden = false; ui.wait.hidden = true;
       refresh(false);
       if (copied) copied.then(() => { if (mine === shown) say(COPIED); }, () => { if (mine === shown) say(NOT_COPIED, true); });
-      else say('Draw on the picture, then copy, save or share it for the issue.');
+      else say(kind === 'own' ? 'Your screenshot is in. Draw on it, then copy, save or share it for the issue.' : 'Draw on the picture, then copy, save or share it for the issue.');
     }, () => {
       if (mine !== shown) return;
+      if (kind === 'own'){ ui.kinds.own.hidden = true; ui.pick.hidden = !pictures.part; show('page', false); say('That picture couldn’t be read. Try a PNG or JPEG screenshot.', true); return; }
       if (kind === 'page' && pictures.part){ show('part', false); return; }
       ui.wait.textContent = 'No picture in this browser.';
       say('Couldn’t make a picture here. The issue still says what was on screen.', true);
     });
+  }
+
+  /* The person's own screenshot as this time's picture, scaled down like the others. It doesn't come from a tap,
+     so it isn't copied at once; it is after the first stroke, or with Copy picture. */
+  function useOwn(blob){
+    const maxSize = page.maxSize || 2400;
+    pictures.own = (typeof createImageBitmap === 'function' ? createImageBitmap(blob) : new Promise((ok, no) => {
+      const img = new Image(), url = URL.createObjectURL(blob);
+      img.onload = () => { URL.revokeObjectURL(url); ok(img); }; img.onerror = () => { URL.revokeObjectURL(url); no(new Error('not a picture')); };
+      img.src = url;
+    })).then(src => {
+      const w = src.width, h = src.height, scale = Math.min(1, maxSize / Math.max(w, h));
+      const c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(w * scale)); c.height = Math.max(1, Math.round(h * scale));
+      c.getContext('2d').drawImage(src, 0, 0, c.width, c.height);
+      if (src.close) src.close();
+      return c;
+    });
+    pictures.own.catch(() => {});
+    ui.kinds.own.hidden = false; ui.pick.hidden = false;
+    show('own', false);
   }
 
   function open(){
@@ -183,6 +230,7 @@ export function createFeedback({repo, labels = ['feedback'], picture = null, pic
     run++;
     fileName = info.fileName || 'feedback.png'; file = null;
     ui.kinds.part.hidden = !picture;
+    ui.kinds.own.hidden = true;
     ui.pick.hidden = !picture;
     ui.sub.textContent = info.subtitle || '';
     ui.long.hidden = true;
