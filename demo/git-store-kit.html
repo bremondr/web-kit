@@ -151,10 +151,12 @@
       <section class="card" aria-labelledby="try-h">
         <h2 id="try-h">Other things to try</h2>
         <div class="row"><button class="btn" type="button" id="elsewhere">Change a note on another device</button></div>
-        <p class="small muted">Then publish or save that note: the panel asks whether to overwrite, keep theirs or save a copy.</p>
+        <p class="small muted">Then publish or save that note: the panel asks whether to overwrite, keep theirs or save a copy. Restoring an old version from the working folder’s <strong>History</strong> asks too, because it saves on top of the version you opened.</p>
         <label class="option"><input type="checkbox" id="offline"><span>GitHub can’t be reached (offline)</span></label>
         <label class="option"><input type="checkbox" id="stale"><span>raw.githubusercontent.com serves old copies</span></label>
         <div class="row"><button class="btn" type="button" id="limit">Use up the 60 reads without a token</button></div>
+        <p class="small muted">The fake GitHub keeps its repos in this tab through a reload (<code>fake.export()</code> into sessionStorage, <code>createFakeGitHub({state})</code> back), the way a practice mode can.</p>
+        <div class="row"><button class="btn" type="button" id="fake-reset">Start the fake GitHub over</button></div>
         <p class="msg small" id="try-msg" role="status"></p>
       </section>
 
