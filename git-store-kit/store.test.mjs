@@ -253,6 +253,92 @@ test('history: the versions of one item, an old one opened, and restored as a ne
   await assert.rejects(store.version(PUBLIC, 'box', 'not-a-commit'), e => e.code === 'invalid');
 });
 
+test('restore with a base: a newer save on GitHub brings up the conflict instead of being overwritten', async () => {
+  const {store, fake} = await setup();
+  store.setToken(PUBLIC, WRITE);
+  const opened = await store.open(PUBLIC, 'box');   // the app has this version open
+  await store.save(PUBLIC, {id: 'box', name: 'Box drill', steps: [1, 2]}, {base: opened.sha, note: 'Second step'});
+  const mine = await store.open(PUBLIC, 'box');
+  await fake.edit(PUBLIC, 'drills/box.json', {id: 'box', name: 'Box drill (laptop)', steps: [7]});
+  await store.load(PUBLIC);                          // the store has seen the laptop's version; the app hasn't
+  const versions = await store.history(PUBLIC, 'box');
+  const oldest = versions.at(-1).commit;
+  const commits = fake.commits(PUBLIC).length;
+  const c = await store.restore(PUBLIC, 'box', oldest, {base: mine.sha}).catch(e => e);
+  assert.ok(c instanceof GitStoreConflict, 'an old base is a conflict');
+  assert.equal(c.op, 'restore');
+  assert.equal(c.theirs.item.name, 'Box drill (laptop)');
+  assert.deepEqual(c.mine.steps, [1]);
+  assert.equal(fake.commits(PUBLIC).length, commits, 'nothing was written');
+  const r = await store.resolve(c, 'overwrite');
+  assert.equal(r.kept, 'mine');
+  assert.deepEqual(fake.file(PUBLIC, 'drills/box.json').steps, [1]);
+  assert.match(fake.commits(PUBLIC)[0].message, /^Restore Box drill as it was in/);
+  // with the newest version as base, it just restores
+  const again = await store.restore(PUBLIC, 'box', versions[1].commit, {base: r.sha, note: 'Back to two steps'});
+  assert.deepEqual(fake.file(PUBLIC, 'drills/box.json').steps, [1, 2]);
+  assert.equal(fake.commits(PUBLIC)[0].message, 'Back to two steps');
+  assert.ok(again.commit && again.sha);
+});
+
+test('newId gets the item being copied, and the default needs nothing', async () => {
+  const fake = createFakeGitHub();
+  await fake.addRepo(PUBLIC, {files: {'drills/box.json': {id: 'box', name: 'Box drill', steps: [1]}}});
+  fake.addToken(WRITE, PUBLIC, 'write');
+  const given = [];
+  const newId = item => { given.push(item); return item.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-copy'; };
+  const store = createGitStore({app: 'test-app', folder: 'drills', read, write, newId, fetch: fake.fetch, storage: memoryStorage(), cache: memoryCache()});
+  store.setToken(PUBLIC, WRITE);
+  await store.load(PUBLIC);
+  await fake.edit(PUBLIC, 'drills/box.json', {id: 'box', name: 'Box drill (theirs)', steps: [2]});
+  const c = await store.save(PUBLIC, {id: 'box', name: 'Island settlers', steps: [3]}).catch(e => e);
+  const r = await store.resolve(c, 'copy');
+  assert.equal(given.length, 1);
+  assert.equal(given[0].name, 'Island settlers', 'the item being copied');
+  assert.equal(r.id, 'island-settlers-copy');
+  assert.equal(fake.file(PUBLIC, 'drills/island-settlers-copy.json').id, 'island-settlers-copy');
+  // the default: a random id
+  const plain = (await setup()).store;
+  plain.setToken(PUBLIC, WRITE);
+  const copy = await plain.save(PUBLIC, {id: 'box', name: 'Box drill', steps: [1]}, {asCopy: true});
+  assert.match(copy.id, /^[A-Za-z0-9]{16}$/);
+});
+
+test('the fake GitHub exports its state as JSON and imports it again', async () => {
+  const {store, fake} = await setup();
+  store.setToken(PUBLIC, WRITE);
+  await store.load(PUBLIC);
+  await store.save(PUBLIC, {id: 'box', name: 'Box drill', steps: [1, 2]}, {note: 'Second step'});
+  await store.remove(PUBLIC, 'angel');
+  await store.load(PUBLIC);
+  const before = fake.used;
+  const text = JSON.stringify(fake.export());
+  const again = createFakeGitHub({state: JSON.parse(text)});
+  assert.deepEqual(again.export(), JSON.parse(text), 'the same state after a round trip');
+  assert.equal(again.used, before, 'the limit state comes along');
+  assert.deepEqual(again.commits(PUBLIC), fake.commits(PUBLIC));
+  assert.deepEqual(again.file(PUBLIC, 'drills/box.json').steps, [1, 2]);
+  assert.equal(again.file(PUBLIC, 'drills/angel.json'), null);
+  // a store on the imported fake: tokens, files, history and old versions all work, and saving goes on
+  const {store: s2} = await setup({fake: again});
+  s2.setToken(PRIVATE, WRITE);
+  const pub = await s2.load(PUBLIC), priv = await s2.load(PRIVATE);
+  assert.equal(pub.error, null);
+  assert.equal(priv.items[0].name, 'Secret play', 'the private repo with its token');
+  const versions = await s2.history(PUBLIC, 'box');
+  assert.deepEqual(versions.map(v => v.message), ['Second step', 'Add drills/box.json']);
+  assert.deepEqual((await s2.version(PUBLIC, 'box', versions[1].commit)).item.steps, [1]);
+  s2.setToken(PUBLIC, WRITE);
+  await s2.save(PUBLIC, {id: 'box', name: 'Box drill', steps: [1, 2, 3]}, {note: 'Third step'});
+  assert.equal((await s2.history(PUBLIC, 'box'))[0].message, 'Third step');
+  assert.equal(fake.file(PUBLIC, 'drills/box.json').steps.length, 2, 'the first fake is untouched');
+  // the read-only token stays read-only; something else is refused
+  const {store: s3} = await setup({fake: createFakeGitHub({state: JSON.parse(text)})});
+  s3.setToken(PRIVATE, READ);
+  assert.equal((await s3.load(PRIVATE)).canWrite, false);
+  assert.throws(() => again.import({repos: []}), /Not a state/);
+});
+
 test('working folder: open reads the newest version, and saving from it detects a change made meanwhile', async () => {
   const {store, fake} = await setup();
   store.setToken(PUBLIC, WRITE);

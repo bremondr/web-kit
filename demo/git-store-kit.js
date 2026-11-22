@@ -4,7 +4,9 @@
    instead, without a token.
 
    - Publish mode (like Ultimate Playbook): notes in this browser, published one by one to a repo.
-   - Working folder mode (like Protogames): open a note from a repo, edit it, save it back as a commit. */
+   - Working folder mode (like Protogames): open a note from a repo, edit it, save it back as a commit. Its History
+     restores on top of the version that was opened (base), and puts the restored version in the form (onRestore).
+   The fake GitHub's state is kept in sessionStorage (fake.export / createFakeGitHub({state})), so a reload keeps it. */
 import { createGitStore, tokenNeed } from '../git-store-kit/store.js';
 import { createPanel } from '../git-store-kit/panel.js';
 import { createFakeGitHub } from '../git-store-kit/fake-github.js';
@@ -24,25 +26,32 @@ function readNote(json){
 }
 const writeNote = n => ({format: 'demo-note', id: n.id, title: n.title, text: n.text, color: n.color});
 
-/* ---- the fake GitHub, with two repos ---- */
-const fake = createFakeGitHub();
+/* ---- the fake GitHub, with two repos, kept in this tab through a reload ---- */
+const FAKE_KEY = 'git-store-demo:fake-github';
+let fake = null;
+try { const kept = JSON.parse(sessionStorage.getItem(FAKE_KEY)); if (kept) fake = createFakeGitHub({state: kept}); } catch { fake = null; }
+const keepFake = () => { try { sessionStorage.setItem(FAKE_KEY, JSON.stringify(fake.export())); } catch { /* it just starts over */ } };
 const note = (id, title, text, color) => ({format: 'demo-note', id, title, text, color});
-await fake.addRepo(PUBLIC, {files: {
-  'notes/warmup.json': note('warmup', 'Warm-up', 'Ten minutes of jogging, then dynamic stretches.', 'sun'),
-  'notes/stack.json': note('stack', 'Vertical stack', 'Cutters line up behind the disc; one cut at a time.', 'sea'),
-  'notes/cooldown.json': note('cooldown', 'Cool-down', 'Slow lap and stretches. Say one good thing about a teammate.', 'leaf'),
-  'notes/old-format.json': {title: 'Written by an older app', body: 'Not a demo-note: the app\'s read() drops it.'},
-  'README.md': '# Demo team notes\n'
-}});
-await fake.addRepo(PRIVATE, {private: true, files: {
-  'notes/tactic.json': note('tactic', 'Secret tactic', 'Only for the team: the hammer play against zone.', 'rose')
-}});
-// a little history, so "History" has something to show
-await fake.edit(PUBLIC, 'notes/stack.json', note('stack', 'Vertical stack', 'Cutters line up behind the disc; one cut at a time. Handlers reset with a dump.', 'sea'), {author: 'coach', message: 'Add the dump to the vertical stack'});
-await fake.edit(PUBLIC, 'notes/stack.json', note('stack', 'Vertical stack', 'Cutters line up behind the disc, 5 m apart; one cut at a time. Handlers reset with a dump.', 'sea'), {author: 'coach', message: 'Say how far apart'});
-fake.addToken(WRITE_TOKEN, PUBLIC, 'write');
-fake.addToken(WRITE_TOKEN, PRIVATE, 'write');
-fake.addToken(READ_TOKEN, PRIVATE, 'read');
+if (!fake){ fake = createFakeGitHub(); await addDemoRepos(); }
+async function addDemoRepos(){
+  await fake.addRepo(PUBLIC, {files: {
+    'notes/warmup.json': note('warmup', 'Warm-up', 'Ten minutes of jogging, then dynamic stretches.', 'sun'),
+    'notes/stack.json': note('stack', 'Vertical stack', 'Cutters line up behind the disc; one cut at a time.', 'sea'),
+    'notes/cooldown.json': note('cooldown', 'Cool-down', 'Slow lap and stretches. Say one good thing about a teammate.', 'leaf'),
+    'notes/old-format.json': {title: 'Written by an older app', body: 'Not a demo-note: the app\'s read() drops it.'},
+    'README.md': '# Demo team notes\n'
+  }});
+  await fake.addRepo(PRIVATE, {private: true, files: {
+    'notes/tactic.json': note('tactic', 'Secret tactic', 'Only for the team: the hammer play against zone.', 'rose')
+  }});
+  // a little history, so "History" has something to show
+  await fake.edit(PUBLIC, 'notes/stack.json', note('stack', 'Vertical stack', 'Cutters line up behind the disc; one cut at a time. Handlers reset with a dump.', 'sea'), {author: 'coach', message: 'Add the dump to the vertical stack'});
+  await fake.edit(PUBLIC, 'notes/stack.json', note('stack', 'Vertical stack', 'Cutters line up behind the disc, 5 m apart; one cut at a time. Handlers reset with a dump.', 'sea'), {author: 'coach', message: 'Say how far apart'});
+  fake.addToken(WRITE_TOKEN, PUBLIC, 'write');
+  fake.addToken(WRITE_TOKEN, PRIVATE, 'write');
+  fake.addToken(READ_TOKEN, PRIVATE, 'read');
+  keepFake();
+}
 
 /* ---- the store and its panel ---- */
 const store = createGitStore({
@@ -92,7 +101,8 @@ function drawShared(){
         onclick: () => panel.open({token: s.repo})}) : null);
   }));
   $('shared').replaceChildren(...sources.flatMap(s => s.items.map(i => noteCard(i.item, {repo: s.repo, actions: [
-    h('button', {class: 'btn', type: 'button', text: 'History', onclick: () => panel.showHistory(s.repo, i.id, {onOpen: showOld})}),
+    h('button', {class: 'btn', type: 'button', text: 'History', onclick: () => panel.showHistory(s.repo, i.id, {onOpen: showOld,
+      onRestore: r => say('shared-msg', `Restored “${r.item.title}” in ${s.repo}${r.kept === 'copy' ? ', as a copy' : ''}. Commit ${r.commit.slice(0, 7)}.`)})}),
     s.canWrite ? h('button', {class: 'btn', type: 'button', text: 'Remove', onclick: async () => {
       try { const r = await panel.remove(s.repo, i.id); if (r) say('shared-msg', `Removed “${i.name}” from ${s.repo}.`); }
       catch (e){ failed('shared-msg', e); }
@@ -158,7 +168,11 @@ $('mine-add').addEventListener('click', () => {
 });
 
 /* ---- working folder mode: open, edit, save back ---- */
-let opened = null;   // {repo, id, sha}
+let opened = null;   // {repo, id, sha}: sha is the version the form is based on
+function showOpened(item){
+  if (item){ $('folder-title').value = item.title; $('folder-text').value = item.text; $('folder-color').value = item.color; }
+  $('folder-where').textContent = `${opened.repo}, notes/${opened.id}.json at ${opened.sha ? opened.sha.slice(0, 7) : '–'}`;
+}
 let touched = null;  // the note published or opened last: "Change a note on another device" changes that one
 $('folder-open').addEventListener('click', async () => {
   const [repo, id] = $('folder-pick').value.split('#');
@@ -168,11 +182,8 @@ $('folder-open').addEventListener('click', async () => {
     if (!r){ say('folder-msg', 'It isn’t there any more.', true); return; }
     opened = {repo, id, sha: r.sha};
     touched = opened;
-    $('folder-title').value = r.item.title;
-    $('folder-text').value = r.item.text;
-    $('folder-color').value = r.item.color;
+    showOpened(r.item);
     $('folder-form').hidden = false;
-    $('folder-where').textContent = `${repo}, notes/${id}.json at ${r.sha.slice(0, 7)}`;
     say('folder-msg', 'Opened. Edit it, then save it back.');
   } catch (e){ failed('folder-msg', e); }
 });
@@ -192,11 +203,17 @@ $('folder-save').addEventListener('click', async () => {
       opened.sha = r.sha;
       say('folder-msg', `Saved as one commit (${r.commit.slice(0, 7)})${r.kept === 'copy' ? ', as a copy' : ''}.`);
     }
-    $('folder-where').textContent = `${opened.repo}, notes/${opened.id}.json at ${opened.sha ? opened.sha.slice(0, 7) : '–'}`;
+    showOpened(null);
     $('folder-note').value = '';
   } catch (e){ failed('folder-msg', e); }
 });
-$('folder-history').addEventListener('click', () => opened && panel.showHistory(opened.repo, opened.id, {onOpen: showOld}));
+// History restores on top of the version the form is based on (base): if it changed on GitHub since, the panel asks.
+// A restored version is put in the form, which is then based on it.
+$('folder-history').addEventListener('click', () => opened && panel.showHistory(opened.repo, opened.id, {base: opened.sha, onOpen: showOld, onRestore: r => {
+  opened.id = r.id; opened.sha = r.sha;
+  showOpened(r.item);
+  say('folder-msg', `Restored as the newest version (${r.commit.slice(0, 7)})${r.kept === 'copy' ? ', as a copy' : ''}. The form shows it.`);
+}}));
 
 /* ---- an old version, opened from the history ---- */
 function showOld({item, commit, date}){
@@ -231,12 +248,15 @@ $('elsewhere').addEventListener('click', async () => {
   const path = `notes/${target.id}.json`, now = fake.file(target.repo, path);
   if (!now){ say('try-msg', 'That note isn’t there any more.'); return; }
   await fake.edit(target.repo, path, {...now, text: (now.text || '') + ' (changed on the laptop)'}, {message: 'Changed on the laptop'});
+  keepFake();
   say('try-msg', `“${now.title}” was changed on another device. Save or publish it now to see the question.`);
 });
+fake.offline = $('offline').checked; fake.staleRaw = $('stale').checked;   // a reload can keep the boxes ticked
 $('offline').addEventListener('change', e => { fake.offline = e.target.checked; store.load(); });
 $('stale').addEventListener('change', e => { fake.staleRaw = e.target.checked; });
-$('limit').addEventListener('click', () => { fake.used = fake.limit; store.load(); say('try-msg', 'The 60 reads without a token are used up: the saved copy is shown, and a token lifts the limit.'); });
+$('limit').addEventListener('click', () => { fake.used = fake.limit; keepFake(); store.load(); say('try-msg', 'The 60 reads without a token are used up: the saved copy is shown, and a token lifts the limit.'); });
 $('reload').addEventListener('click', () => store.load());
+$('fake-reset').addEventListener('click', () => { try { sessionStorage.removeItem(FAKE_KEY); } catch { /* nothing kept */ } location.reload(); });
 
 /* ---- the requests, as the module sent them (the token is never in this list) ---- */
 function drawLog(){
@@ -250,7 +270,7 @@ function drawLog(){
   }));
 }
 const logged = fake.fetch;
-fake.fetch = async (...a) => { try { return await logged(...a); } finally { queueMicrotask(drawLog); } };
+fake.fetch = async (...a) => { try { return await logged(...a); } finally { keepFake(); queueMicrotask(drawLog); } };
 
 /* ---- the real repository, read without a token ---- */
 const real = createGitStore({app: 'git-store-demo-real', folder: 'demo/git-store-sample', read: readNote, write: writeNote, name: n => n.title, storage: null});

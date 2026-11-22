@@ -8,8 +8,9 @@
    On the git-store-kit page (against its fake GitHub): the public repo loads without a token and the private one
    asks for one; a token pasted in the panel opens it; publishing sends one commit; a change made elsewhere brings up
    the conflict question, and each answer works; an item's history lists its versions and opens and restores one;
-   the working folder opens, edits and saves; offline shows the saved copy; and no token ever shows in the request
-   list. The panel fits on the screen in each view.
+   the working folder opens, edits and saves, and its history restores into the form, asking first when GitHub has a
+   newer version than the one opened; the fake GitHub survives a reload and starts over on request; offline shows
+   the saved copy; and no token ever shows in the request list. The panel fits on the screen in each view.
 
      node tools/check-demo.mjs                        (exit code 1 when something is wrong)
      node tools/check-demo.mjs --screenshots <dir>    also save a picture of each page and of the open panel
@@ -462,6 +463,47 @@ async function checkGitStore(page, where, scheme, size) {
   await wait(() => /^Saved as one commit/.test(document.getElementById('folder-msg').textContent), null, 'saving from the working folder did not work');
   await wait(() => /Edited in the working folder/.test(document.getElementById('shared').innerText), null, 'the saved note is not shown');
 
+  // working folder history: restoring puts the old version in the form (onRestore) and moves its base on
+  const WARMUP = 'Ten minutes of jogging, then dynamic stretches.';
+  const restoreOldest = async () => {
+    await page.click('#folder-history');
+    await page.locator('.gs-version').nth(1).waitFor(T).catch(() => fail(where, 'the working folder\'s history does not list its versions'));
+    const last = page.locator('.gs-version').last();
+    await last.locator('.gs-btn', { hasText: 'Restore' }).click();
+    await last.locator('.gs-btn', { hasText: 'Restore this version' }).click();
+  };
+  const where0 = await page.locator('#folder-where').innerText();
+  await restoreOldest();
+  await wait(() => /^Restored/.test(document.querySelector('.gs-body .gs-note')?.textContent), null, 'restoring in the working folder did not work');
+  await wait(() => /^Restored as the newest version/.test(document.getElementById('folder-msg').textContent), null, 'onRestore did not tell the working folder');
+  if (await page.inputValue('#folder-text') !== WARMUP) fail(where, 'the restored version is not in the form');
+  if (await page.locator('#folder-where').innerText() === where0) fail(where, 'the form is not based on the restored version');
+  await page.keyboard.press('Escape');
+  // a newer save on GitHub, which the store has loaded but the form hasn't: restoring asks instead of overwriting
+  await page.fill('#folder-text', 'Edited again.');
+  await page.click('#folder-save');
+  await wait(() => /^Saved as one commit/.test(document.getElementById('folder-msg').textContent), null, 'saving again from the working folder did not work');
+  await page.click('#elsewhere');
+  await page.click('#reload');
+  await wait(() => /changed on the laptop/.test(document.getElementById('shared').innerText), null, 'the change on another device is not loaded');
+  await restoreOldest();
+  await page.locator('.gs-card', { hasText: 'Changed meanwhile' }).waitFor(T).catch(() => fail(where, 'restoring on top of a newer version does not ask'));
+  await panelFits('restore conflict');
+  await shot('restore-conflict');
+  await page.locator('.gs-choices .gs-btn', { hasText: 'Overwrite with mine' }).click();
+  await wait(() => /^Restored as the newest version/.test(document.getElementById('folder-msg').textContent), null, 'onRestore was not called after the conflict');
+  if (await page.inputValue('#folder-text') !== WARMUP) fail(where, 'after the conflict, the restored version is not in the form');
+  await shot('folder-restored');
+
+  // the fake GitHub survives a reload (fake.export into sessionStorage, createFakeGitHub({state}) back)
+  const notes = await page.locator('#shared .note').count();
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('body[data-ready]', T);
+  await wait(() => !document.querySelector('#status').innerText.includes('loading'), null, 'after a reload, the repos do not load');
+  if (await page.locator('#shared .note').count() !== notes) fail(where, `after a reload, ${await page.locator('#shared .note').count()} notes show, not ${notes}`);
+  if (!(await page.locator('#shared').innerText()).includes(WARMUP)) fail(where, 'after a reload, the restored note is gone');
+  if (!/demo-team\/notes: \d+ notes/.test(await status())) fail(where, `after a reload, the public repo reads "${(await status()).split('\n')[0]}"`);
+
   // offline: the saved copy, and why
   await page.check('#offline');
   await wait(() => /can’t be reached.*saved copy/.test(document.getElementById('status').innerText), null, 'offline does not show the saved copy');
@@ -470,6 +512,10 @@ async function checkGitStore(page, where, scheme, size) {
 
   // no token anywhere in the request list
   if ((await page.locator('#log').innerText()).includes('github_pat_')) fail(where, 'a token shows in the request list');
+  // "Start the fake GitHub over": back to the three notes it started with
+  await page.click('#fake-reset');
+  await page.waitForSelector('body[data-ready]', T);
+  await wait(() => /demo-team\/notes: 3 notes, 1 file left out/.test(document.getElementById('status').innerText), null, 'starting the fake GitHub over does not bring back its first notes');
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
   if (overflow > 0) fail(where, `after trying it, the page is ${overflow} px wider than the screen`);
 }
