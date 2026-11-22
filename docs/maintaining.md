@@ -86,7 +86,7 @@ Browser code is tried in `demo/`, not in a project: each page imports its module
    npm install --no-save playwright
    npx playwright install chromium
    ```
-   `--screenshots <dir>` saves a picture of each page and the open panel, to put in the pull request.
+   `--screenshots <dir>` saves a picture of each page and the open panel. On a pull request, CI runs it in Chromium and in WebKit (Safari's engine) and keeps those pictures as `demo-screenshots-chromium` and `demo-screenshots-webkit` on the run's summary page.
 
 The feedback-kit page sends its issues to this repository with the `demo` label. Create the label once:
 ```sh

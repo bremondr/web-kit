@@ -2,6 +2,23 @@
 
 Each version is released as the tag `feedback-kit-vX.Y.Z`. A new major version (the first number) means a project using the kit may need changes; the notes say which.
 
+## 2.0.0 (unreleased)
+
+The picture is now the whole page, taken at the tap, and the app's own picture becomes a switch in the panel.
+
+- **New `pagePicture(element, options)`** in the new file `page.js`: a picture of the whole page (or one element), redrawn from what is on screen, in every browser, with no prompt. `area: 'screen'` (default) or `'full'` for the whole scrollable page. It keeps typed values, scroll positions, fixed and sticky parts, canvases and `::before`/`::after`. Elements with `data-fk-skip` are left out.
+- **The panel opens with the whole page.** A new `page` option is passed to `pagePicture` (`area`, `fonts`, `element`, `maxSize`, `background`).
+- **`picture` is now optional, and a switch.** The app's own picture is offered as a button in the panel, labelled with the new `pictureLabel` option (default "Just this part"). If the whole page can't be drawn, the panel shows this picture instead.
+- The panel no longer shows **Share…** in browsers that can't share the picture: the kit's own display rules beat the `hidden` attribute there.
+- The picture no longer moves when the message under it changes length.
+
+**What to change in a project:**
+- Add `page.js` to the service worker's list of files, if there is one.
+- Pass the web fonts the page uses as `page: {fonts}` (the same `embedFonts(...)` as for `svgPicture`), and choose `area`.
+- Keep `picture` if the app's own part is still useful, and set `pictureLabel` to say what it is, for example "Just the field". Or remove it.
+- Give `data-fk-skip` to anything that shouldn't be in the picture.
+- Open the panel on each kind of page and check that the whole page looks right.
+
 ## 1.0.1 (2026-11-22)
 
 - The panel no longer shows an empty canvas next to "Making the picture…" while the picture is being made.
