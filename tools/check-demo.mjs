@@ -269,7 +269,17 @@ async function checkFeedback(page, where, scheme, size) {
       const c = document.createElement('canvas'); c.width = 1280; c.height = 800;
       const x = c.getContext('2d'), paint = () => { x.fillStyle = '#12ab34'; x.fillRect(0, 0, c.width, c.height); };
       paint(); setInterval(paint, 50);
-      return c.captureStream(20);
+      const stream = c.captureStream(20);
+      // a real capture is already running when the browser hands it over; a canvas stream may not have a frame yet
+      // (WebKit can take seconds), so hand it over once a video playing it has one, as the real thing would
+      const v = document.createElement('video');
+      v.muted = true; v.playsInline = true; v.srcObject = stream;
+      v.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;opacity:0';
+      document.documentElement.appendChild(v);
+      v.play().catch(() => {});
+      for (let t = 0; t < 200 && !(v.readyState >= 2 && v.videoWidth); t++) { paint(); await new Promise(ok => setTimeout(ok, 50)); }
+      v.srcObject = null; v.remove();
+      return stream;
     };
     // on the prototype and the object itself: WebKit ignores a plain assignment
     const put = (o, k, v) => Object.defineProperty(o, k, { value: v, configurable: true, writable: true });
