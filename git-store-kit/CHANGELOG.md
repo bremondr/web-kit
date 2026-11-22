@@ -12,5 +12,9 @@ Each version is released as the tag `git-store-kit-vX.Y.Z`. A new major version 
   - `save`, `remove` and `open`, with conflicts when the file changed meanwhile (`GitStoreConflict`, settled with `resolve`: overwrite, keep theirs, or save a copy).
   - History: `history`, `version`, `restore`.
   - Tokens per repo in local storage, sent only in the `Authorization` header to `api.github.com`.
+- `tokenNeed(source)`: whether a source needs a token, or a new one, and one sentence saying why.
 - `createPanel`: the sources and their tokens, the conflict question, and an item's history. Themed with `--gs-*` custom properties.
+  - `panel.open({token: repo})` opens straight at that source's token field, focused.
+  - A source that needs a token says why and shows "Add a token" or "Replace the token". After saving, the panel says what the token changed.
+  - "How do I make a token?": numbered steps for a fine-grained token on GitHub, folded under the token field.
 - `createFakeGitHub`: a GitHub in memory, for tests and demos.

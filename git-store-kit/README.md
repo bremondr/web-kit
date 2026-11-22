@@ -109,6 +109,15 @@ await store.restore(repo, id, versions[2].commit);       // that version becomes
 
 `store.setToken(repo, token)` (throws if it doesn't look like a GitHub token), `store.removeToken(repo)`, `store.hasToken(repo)`. The panel does this for people.
 
+`tokenNeed(source, {label})` (exported from `store.js`) says whether a source needs a token, or a new one, before it works: `null`, or `{action, code, reason}`. `action` is `'add'` or `'replace'`, and `reason` is one sentence to show next to the button (`label` names a source in it: `'repo'` unless given). It comes from the source's error: `no-token`, `not-found` (a private repo without a token, or a token for another repo), `auth` (the token expired or was deleted) and `forbidden` (the token lacks a permission). A token that can only read is not a need. Use it to put an "Add a token" button where the app shows a source, opening the panel there:
+
+```js
+for (const s of store.sources()) {
+  const need = tokenNeed(s, {label: 'team'});
+  if (need) showButton(s.repo, need.action === 'replace' ? 'Replace the token' : 'Add a token', need.reason, () => panel.open({token: s.repo}));
+}
+```
+
 ### Errors
 
 Every failure is a `GitHubError` (exported from `store.js`) with a `code` and a `message` to show people:
@@ -129,7 +138,8 @@ Every failure is a `GitHubError` (exported from `store.js`) with a `code` and a 
 
 `createPanel(store, {title, noun, nouns, sourceLabel, heading, tokenHelp, parent})`:
 
-- `panel.open()` shows the sources;
+- `panel.open()` shows the sources. A source that needs a token says why, with an "Add a token" (or "Replace the token") button. After a token is saved, the panel says what it changed ("Token saved. owner/repo: 3 drills, you can edit.");
+- `panel.open({token: repo})` shows them with that source's token field open and focused, ready to paste in. Under the field, "How do I make a token?" folds out the steps for making one on GitHub (`tokenHelp` replaces them with the project's own text);
 - `panel.save` and `panel.remove` ask about conflicts;
 - `panel.showHistory(repo, id, {onOpen, name})` shows an item's versions;
 - `panel.askConflict(conflict)` asks without saving, and resolves to the choice or null;
@@ -151,13 +161,16 @@ With the kit copied into the project (see [web-kit's setup guide](../docs/setup-
    - Add the folder with one item, or a `README.md` in it, so the folder exists.
    - It doesn't need GitHub Pages.
    - The app writes files to the default branch. To keep a repo for each team, class or project, make one repo each: tokens are limited to whole repos.
-2. **A token for each editor and each repo.** On GitHub: Settings → Developer settings → Personal access tokens → **Fine-grained tokens** → Generate new token ([direct link](https://github.com/settings/personal-access-tokens/new)).
-   - Resource owner: the account that owns the data repo.
-   - Expiration: a date, for example in a year.
-   - Repository access: **Only select repositories**, and only the data repo.
-   - Permissions: Repository permissions → **Contents: Read and write**. GitHub adds *Metadata: Read-only* itself. Nothing else.
-   
-   Paste it in the app's panel on each device that edits. For readers of a private repo, the same steps with **Contents: Read-only** give a token that can only read; hand it to them.
+2. **A token for each editor and each repo.** The same steps are in the panel, under "How do I make a token?":
+   1. On GitHub: Settings → Developer settings → Personal access tokens → **Fine-grained tokens** → Generate new token ([direct link](https://github.com/settings/personal-access-tokens/new)).
+   2. **Resource owner:** the account or organisation that owns the data repo.
+   3. **Expiration:** a date, for example in a year.
+   4. **Repository access:** Only select repositories, then only the data repo.
+   5. **Repository permissions** → Contents: **Read and write** to save. GitHub adds *Metadata: Read-only* itself. Nothing else.
+   6. Generate the token and copy it: it starts with `github_pat_`. GitHub shows it only once.
+   7. In the app, tap "Add a token" next to the repo (or open the panel and choose the repo's token button), paste it and save. The panel says what changed: the repo's items, and "you can edit".
+
+   Do this on each device that edits. The token stays in that browser and is sent only to GitHub. For readers of a private repo, the same steps with Contents: **Read-only** give a token that can only read; hand it to them. The app then shows the repo as "Read only".
 3. **The adapter.** Write one project file, for example `js/features/team.js`, that calls `createGitStore` and `createPanel` with the project's `app`, `folder`, `param`, `shortName`, and `read` and `write` for its items. `read` must check every field, because data in a repo was written by someone else. It draws the items into the app's lists and adds the buttons ("Publish to team", "Save to repo", "History"). Keep this file out of the vendored folder.
 4. **The styles.** Link `git-store-kit.css` and set the `--gs-*` properties to the project's colours and fonts.
 5. **Content-Security-Policy.** If the page has one, its `connect-src` must allow `https://api.github.com https://raw.githubusercontent.com`. Those two hosts serve every repo of every owner.

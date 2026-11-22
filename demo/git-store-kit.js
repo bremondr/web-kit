@@ -5,7 +5,7 @@
 
    - Publish mode (like Ultimate Playbook): notes in this browser, published one by one to a repo.
    - Working folder mode (like Protogames): open a note from a repo, edit it, save it back as a commit. */
-import { createGitStore } from '../git-store-kit/store.js';
+import { createGitStore, tokenNeed } from '../git-store-kit/store.js';
 import { createPanel } from '../git-store-kit/panel.js';
 import { createFakeGitHub } from '../git-store-kit/fake-github.js';
 
@@ -79,12 +79,18 @@ function noteCard(n, {repo = null, actions = []} = {}){
 
 function drawShared(){
   const sources = store.sources();
-  const lines = sources.map(s => {
+  const line = s => {
     if (s.loading && !s.loadedAt) return `${s.repo}: loading…`;
-    if (s.error) return `${s.repo}: ${s.error.message}${s.stale ? ' (the saved copy is shown)' : ''}`;
+    if (s.error) return `${s.repo}: ${(!s.loading && tokenNeed(s)?.reason) || s.error.message}${s.stale ? ' (the saved copy is shown)' : ''}`;
     return `${s.repo}: ${s.items.length} notes${s.dropped ? `, ${s.dropped} file left out` : ''}${s.canWrite ? ', you can edit' : s.hasToken ? ', read only' : ''}`;
-  });
-  $('status').replaceChildren(...lines.map(l => h('li', {text: l})));
+  };
+  // where a source needs a token, the way to add one is right next to what it says
+  $('status').replaceChildren(...sources.map(s => {
+    const need = !s.loading && tokenNeed(s);
+    return h('li', {'data-repo': s.repo}, h('span', {text: line(s)}),
+      need ? h('button', {class: 'btn primary need', type: 'button', text: need.action === 'replace' ? 'Replace the token' : 'Add a token',
+        onclick: () => panel.open({token: s.repo})}) : null);
+  }));
   $('shared').replaceChildren(...sources.flatMap(s => s.items.map(i => noteCard(i.item, {repo: s.repo, actions: [
     h('button', {class: 'btn', type: 'button', text: 'History', onclick: () => panel.showHistory(s.repo, i.id, {onOpen: showOld})}),
     s.canWrite ? h('button', {class: 'btn', type: 'button', text: 'Remove', onclick: async () => {
@@ -206,6 +212,17 @@ $('old-close').addEventListener('click', () => { $('old-card').hidden = true; })
 $('write-token').textContent = WRITE_TOKEN;
 $('read-token').textContent = READ_TOKEN;
 $('use-write').addEventListener('click', () => { store.setToken(PUBLIC, WRITE_TOKEN); store.setToken(PRIVATE, WRITE_TOKEN); store.load(); });
+$('walk-add').addEventListener('click', () => panel.open({token: PRIVATE}));
+for (const button of document.querySelectorAll('[data-copy]')){
+  button.addEventListener('click', async () => {
+    const code = $(button.dataset.copy), which = button.dataset.copy === 'write-token' ? 'write' : 'read-only';
+    try { await navigator.clipboard.writeText(code.textContent); say('copy-msg', `The ${which} token is copied. Paste it in the token field.`); }
+    catch {   // no clipboard here: select it, to copy by hand
+      getSelection().selectAllChildren(code);
+      say('copy-msg', 'Copying isn’t allowed here: the token is selected, copy it by hand.', true);
+    }
+  });
+}
 $('open-panel').addEventListener('click', () => panel.open());
 $('elsewhere').addEventListener('click', async () => {
   // a change on another device: the opened note, or the first published one

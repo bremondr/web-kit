@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createGitStore, GitHubError, GitStoreConflict } from './store.js';
+import { createGitStore, GitHubError, GitStoreConflict, tokenNeed } from './store.js';
 import { createFakeGitHub } from './fake-github.js';
 import { fromBase64, gitBlobSha, toBase64 } from './github.js';
 import { memoryCache } from './cache.js';
@@ -107,6 +107,33 @@ test('a private source needs a token; a read token reads it but cannot write', a
   store.setToken(PRIVATE, WRITE);
   [src] = await store.load();
   assert.equal(src.canWrite, true);
+});
+
+test('tokenNeed says when a source needs a token, or a new one, and why', async () => {
+  const {store} = await setup();
+  store.follow(PUBLIC); store.follow(PRIVATE);
+  await store.load();
+  assert.equal(tokenNeed(store.source(PUBLIC)), null, 'a public repo reads without one');
+  let need = tokenNeed(store.source(PRIVATE), {label: 'team'});
+  assert.equal(need.action, 'add');
+  assert.equal(need.code, 'not-found');
+  assert.match(need.reason, /private/);
+  assert.match(need.reason, /this team/);
+  store.setToken(PRIVATE, READ);
+  await store.load(PRIVATE);
+  assert.equal(tokenNeed(store.source(PRIVATE)), null, 'a read-only token is a choice, not a need');
+  store.setToken(PRIVATE, OTHER);   // a token GitHub doesn't know: expired or deleted
+  await store.load(PRIVATE);
+  need = tokenNeed(store.source(PRIVATE));
+  assert.deepEqual([need.action, need.code], ['replace', 'auth']);
+  assert.match(need.reason, /expired/);
+  // the other codes, as the store reports them
+  const src = (code, hasToken) => ({repo: PRIVATE, hasToken, error: {code, message: ''}});
+  assert.equal(tokenNeed(src('no-token', false)).action, 'add');
+  assert.equal(tokenNeed(src('forbidden', true)).action, 'replace');
+  assert.equal(tokenNeed(src('not-found', true)).action, 'replace');
+  for (const code of ['offline', 'rate-limit', 'server', 'conflict']) assert.equal(tokenNeed(src(code, false)), null, code);
+  assert.equal(tokenNeed(null), null);
 });
 
 test('save adds and replaces a single file as a commit, with the project\'s message; remove deletes it', async () => {
