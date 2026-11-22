@@ -265,9 +265,15 @@ async function checkFeedback(page, where, scheme, size) {
       paint(); setInterval(paint, 50);
       return c.captureStream(20);
     };
-    if (navigator.mediaDevices) navigator.mediaDevices.getDisplayMedia = getDisplayMedia;
-    else Object.defineProperty(navigator, 'mediaDevices', { value: { getDisplayMedia } });
+    // on the prototype and the object itself: WebKit ignores a plain assignment
+    const put = (o, k, v) => Object.defineProperty(o, k, { value: v, configurable: true, writable: true });
+    if (navigator.mediaDevices){
+      if (typeof MediaDevices === 'function') put(MediaDevices.prototype, 'getDisplayMedia', getDisplayMedia);
+      put(navigator.mediaDevices, 'getDisplayMedia', getDisplayMedia);
+    } else put(navigator, 'mediaDevices', { getDisplayMedia });
+    window.fakeCapture.installed = navigator.mediaDevices.getDisplayMedia === getDisplayMedia;
   });
+  if (!(await page.evaluate(() => fakeCapture.installed))) fail(where, 'the check could not put its fake screen capture in place');
   const coarse = await page.evaluate(() => matchMedia('(pointer: coarse)').matches);
   const grab = page.locator('.fk-btn', { hasText: 'Take a real screenshot' });
   await page.click('#feedback');
