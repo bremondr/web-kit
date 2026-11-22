@@ -7,12 +7,13 @@
      import { createPanel } from './git-store-kit/panel.js';
      const panel = createPanel(store, {title: 'Teams', noun: 'drill'});
      settingsButton.addEventListener('click', () => panel.open());
+     addTokenButton.addEventListener('click', () => panel.open({token: repo}));   // straight to that repo's token field
      await panel.save(repo, item, {note});     // asks if there is a conflict; null when the person cancels
      panel.showHistory(repo, id, {onOpen: ({item, commit}) => showReadOnly(item)});
 
    Link git-store-kit.css; its colours and fonts come from --gs-* custom properties (see that file). Esc closes the
    panel. Nothing here shows a stored token: the field to paste one is always empty. */
-import { GitStoreConflict } from './store.js';
+import { GitStoreConflict, tokenNeed } from './store.js';
 
 const TOKEN_PAGE = 'https://github.com/settings/personal-access-tokens/new';
 
@@ -42,7 +43,7 @@ export function createPanel(store, {title = 'Shared sources', noun = 'item', nou
   heading = null, parent = null, tokenHelp = null} = {}){
   const itemName = item => store.nameOf(item);
   let root = null, card = null, view = null, back = null, pending = null, unsubscribe = null;
-  const ui = {tokenFor: null, confirmRemove: null, message: ''};
+  const ui = {tokenFor: null, confirmRemove: null, saved: null, helpOpen: false, message: ''};
 
   function mount(){
     if (root) return;
@@ -76,7 +77,7 @@ export function createPanel(store, {title = 'Shared sources', noun = 'item', nou
     const parts = [];
     if (s.loadedAt) parts.push(`${plural(s.items.length, noun, nouns)}, checked ${ago(s.loadedAt)}`);
     if (s.dropped) parts.push(`${plural(s.dropped, 'file')} couldn’t be read`);
-    return parts.join(' · ') || 'Not loaded yet';
+    return parts.join(' · ') || (s.error ? 'Not loaded' : 'Not loaded yet');
   }
   function badges(s){
     const b = [];
@@ -90,8 +91,11 @@ export function createPanel(store, {title = 'Shared sources', noun = 'item', nou
       placeholder: s.hasToken ? 'Paste a new token to replace it' : 'github_pat_…', 'aria-label': `GitHub token for ${s.repo}`});
     const tokenMsg = el('p', {class: 'gs-note', role: 'status'});
     const saveToken = () => {
-      try { store.setToken(s.repo, input.value); input.value = ''; ui.tokenFor = null; ui.message = `Token saved for ${s.repo}.`; store.load(s.repo); renderSources(); }
-      catch (e){ tokenMsg.textContent = e.message; tokenMsg.classList.add('gs-warn'); }
+      try { store.setToken(s.repo, input.value); }
+      catch (e){ tokenMsg.textContent = e.message; tokenMsg.classList.add('gs-warn'); input.focus(); return; }
+      input.value = ''; ui.tokenFor = null; ui.saved = s.repo;
+      store.load(s.repo);
+      renderSources(`[data-repo="${s.repo}"] [data-gs-token]`, s.repo);
     };
     input.addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); saveToken(); } });
     return el('li', {class: 'gs-source', 'data-repo': s.repo},
@@ -99,27 +103,72 @@ export function createPanel(store, {title = 'Shared sources', noun = 'item', nou
         el('a', {class: 'gs-name', href: `https://github.com/${s.repo}`, target: '_blank', rel: 'noopener', text: s.repo}),
         el('span', {class: 'gs-badges'}, badges(s))),
       el('p', {class: 'gs-state', text: stateText(s)}),
-      s.error ? el('p', {class: 'gs-note gs-warn', text: s.error.message + (s.stale ? ' Showing the copy saved on this device.' : '')}) : null,
+      problemLine(s),
+      ui.saved === s.repo ? el('p', {class: 'gs-note gs-done', role: 'status', text: savedText(s)}) : null,
       el('div', {class: 'gs-row'},
-        el('button', {class: 'gs-btn', type: 'button', text: s.loading ? 'Loading…' : 'Reload', disabled: s.loading, onclick: () => store.load(s.repo)}),
-        el('button', {class: 'gs-btn', type: 'button', 'aria-expanded': String(tokenOpen), text: s.hasToken ? 'Token…' : 'Add a token…',
-          onclick: () => { ui.tokenFor = tokenOpen ? null : s.repo; ui.confirmRemove = null; renderSources(tokenOpen ? null : `[data-repo="${s.repo}"] .gs-input`); }}),
+        tokenButton(s, tokenOpen),
+        el('button', {class: 'gs-btn', type: 'button', 'data-gs-reload': true, text: s.loading ? 'Loading…' : 'Reload', disabled: s.loading, onclick: () => store.load(s.repo)}),
         confirming
           ? el('span', {class: 'gs-confirm'}, el('span', {text: 'Stop following?'}),
             el('button', {class: 'gs-btn gs-danger', type: 'button', text: 'Yes, remove', onclick: async () => { ui.confirmRemove = null; await store.unfollow(s.repo); ui.message = `${s.repo} removed from this device.`; renderSources(); }}),
             el('button', {class: 'gs-btn', type: 'button', text: 'Keep', onclick: () => { ui.confirmRemove = null; renderSources(); }}))
-          : el('button', {class: 'gs-btn', type: 'button', text: 'Remove', onclick: () => { ui.confirmRemove = s.repo; ui.tokenFor = null; renderSources(); }})),
+          : el('button', {class: 'gs-btn', type: 'button', text: 'Remove', onclick: () => { ui.confirmRemove = s.repo; ui.tokenFor = null; ui.saved = null; renderSources(); }})),
       tokenOpen ? el('div', {class: 'gs-token'},
+        tokenNeed(s, {label: sourceLabel}) ? null : el('p', {class: 'gs-note', text: s.hasToken
+          ? 'Paste a new token to replace the one on this device. The token itself is never shown.'
+          : `A token lets this device save to ${s.repo}${s.private === false ? '' : ', and read it if it is private'}.`}),
         el('div', {class: 'gs-row'}, input,
           el('button', {class: 'gs-btn gs-primary', type: 'button', text: 'Save token', onclick: saveToken}),
-          s.hasToken ? el('button', {class: 'gs-btn', type: 'button', text: 'Remove token', onclick: () => { store.removeToken(s.repo); ui.tokenFor = null; ui.message = `Token removed for ${s.repo}.`; store.load(s.repo); renderSources(); }}) : null),
+          s.hasToken ? el('button', {class: 'gs-btn', type: 'button', text: 'Remove token', onclick: () => {
+            store.removeToken(s.repo); ui.tokenFor = null; ui.saved = null; ui.message = `Token removed for ${s.repo}.`; store.load(s.repo); renderSources();
+          }}) : null),
         tokenMsg,
-        el('p', {class: 'gs-note'}, tokenHelp || [
-          'On GitHub, make a ', el('a', {href: TOKEN_PAGE, target: '_blank', rel: 'noopener', text: 'fine-grained token'}),
-          ` for ${s.repo} only: Repository permissions → Contents → Read and write to save, or Read-only to just read a private repo. Give it an expiry date. It is kept in this browser and sent only to GitHub.`
-        ])) : null);
+        tokenHelp ? el('p', {class: 'gs-note'}, tokenHelp) : helpFor(s.repo),
+        el('p', {class: 'gs-note', text: 'The token stays in this browser and is sent only to GitHub.'})) : null);
   }
-  function renderSources(focus){
+  // why a source doesn't work: the reason it needs a token when that is it, otherwise the error
+  function problemLine(s){
+    const need = tokenNeed(s, {label: sourceLabel});
+    if (!s.error || (s.loading && ui.saved === s.repo)) return null;
+    return el('p', {class: 'gs-note gs-warn gs-problem', text: (need ? need.reason : s.error.message) + (s.stale ? ' Showing the copy saved on this device.' : '')});
+  }
+  function tokenLabel(s){
+    const need = !(s.loading && ui.saved === s.repo) && tokenNeed(s, {label: sourceLabel});
+    if (need) return [need.action === 'replace' ? 'Replace the token' : 'Add a token', ui.tokenFor === s.repo ? 'gs-btn' : 'gs-btn gs-primary'];
+    return [s.hasToken ? 'Token…' : 'Add a token…', 'gs-btn'];
+  }
+  function tokenButton(s, tokenOpen){
+    const [text, cls] = tokenLabel(s);
+    return el('button', {class: cls, type: 'button', 'data-gs-token': true, 'aria-expanded': String(tokenOpen), text, onclick: () => {
+      const opening = ui.tokenFor !== s.repo;
+      ui.tokenFor = opening ? s.repo : null; ui.confirmRemove = null; ui.saved = null;
+      renderSources(opening ? `[data-repo="${s.repo}"] .gs-input` : `[data-repo="${s.repo}"] [data-gs-token]`, s.repo);
+    }});
+  }
+  // after a token is saved: what it changed, as soon as the source has loaded with it
+  function savedText(s){
+    if (s.loading) return `Token saved. Loading ${s.repo}…`;
+    if (s.error) return `Token saved, but ${s.repo} still doesn’t load (see above).`;
+    return `Token saved. ${s.repo}: ${plural(s.items.length, noun, nouns)}, ${s.canWrite ? 'you can edit.' : 'read only (this token can’t save).'}`;
+  }
+  // the steps for making a fine-grained token on GitHub, folded away until asked for
+  function helpFor(repo){
+    const strong = text => el('strong', {text});
+    const help = el('details', {class: 'gs-help', open: ui.helpOpen},
+      el('summary', {text: 'How do I make a token?'}),
+      el('ol', {},
+        el('li', {}, 'On GitHub: Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token. ',
+          el('a', {href: TOKEN_PAGE, target: '_blank', rel: 'noopener', text: 'Open that page'}), '.'),
+        el('li', {}, strong('Resource owner'), `: the account or organisation that owns ${repo}.`),
+        el('li', {}, strong('Expiration'), ': a date, for example in a year.'),
+        el('li', {}, strong('Repository access'), ': Only select repositories, then ', strong(repo), '.'),
+        el('li', {}, strong('Repository permissions'), ' → Contents: ', strong('Read and write'), ' to save, or ', strong('Read-only'),
+          ' only to read a private repo. Nothing else.'),
+        el('li', {}, 'Generate the token, copy it (it starts with ', el('code', {text: 'github_pat_'}), ') and paste it above.')));
+    help.addEventListener('toggle', () => { ui.helpOpen = help.open; });
+    return help;
+  }
+  function renderSources(focus, reveal = null){
     const list = store.sources();
     const add = el('input', {class: 'gs-input', type: 'text', autocomplete: 'off', spellcheck: 'false', autocapitalize: 'off', placeholder: 'owner/repo', 'aria-label': `Follow a ${sourceLabel}`});
     const addMsg = el('p', {class: 'gs-note', role: 'status', text: ui.message});
@@ -141,8 +190,9 @@ export function createPanel(store, {title = 'Shared sources', noun = 'item', nou
           el('div', {class: 'gs-row'}, add, el('button', {class: 'gs-btn', type: 'button', text: 'Follow', onclick: follow})),
           addMsg))
     ], focus || '.gs-x');
+    if (reveal) card.querySelector(`[data-repo="${reveal}"]`)?.scrollIntoView({block: 'nearest'});
   }
-  // while the sources are shown, keep their states up to date without disturbing what is being typed
+  // while the sources are shown, keep their states up to date without disturbing what is being typed or focused
   function refreshSources(){
     if (view !== 'sources') return;
     const list = store.sources(), rows = [...card.querySelectorAll('.gs-source')];
@@ -150,16 +200,24 @@ export function createPanel(store, {title = 'Shared sources', noun = 'item', nou
     rows.forEach((row, k) => {
       const s = list[k], fresh = sourceRow(s);
       for (const part of ['.gs-badges', '.gs-state']) row.querySelector(part).replaceWith(fresh.querySelector(part));
-      const warn = row.querySelector(':scope > .gs-warn'), newWarn = fresh.querySelector(':scope > .gs-warn');
-      if (warn) warn.remove();
-      if (newWarn) row.querySelector('.gs-state').after(newWarn);
-      const reload = row.querySelector('.gs-row .gs-btn');
+      row.querySelector(':scope > .gs-problem')?.remove();
+      const problem = fresh.querySelector(':scope > .gs-problem');
+      if (problem) row.querySelector('.gs-state').after(problem);
+      const done = row.querySelector(':scope > .gs-done');
+      if (done) done.textContent = savedText(s);
+      const reload = row.querySelector('[data-gs-reload]');
       reload.textContent = s.loading ? 'Loading…' : 'Reload';
       reload.disabled = s.loading;
+      const [text, cls] = tokenLabel(s), token = row.querySelector('[data-gs-token]');
+      token.textContent = text; token.className = cls;
     });
   }
-  function open(){
-    renderSources();
+  /** Shows the sources. `{token: repo}` opens that source's token field, ready to paste in. */
+  function open({token = null} = {}){
+    const want = token && String(token).toLowerCase();
+    const s = want && store.sources().find(x => x.repo.toLowerCase() === want);
+    ui.tokenFor = s ? s.repo : null; ui.confirmRemove = null; ui.saved = null;
+    renderSources(s ? `[data-repo="${s.repo}"] .gs-input` : null, s ? s.repo : null);
     if (!unsubscribe) unsubscribe = store.subscribe(refreshSources);
   }
 

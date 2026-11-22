@@ -340,7 +340,7 @@ async function checkFeedback(page, where, scheme, size) {
 }
 
 async function checkGitStore(page, where, scheme, size) {
-  const WRITE = 'github_pat_DEMO_write_token_for_both_demo_repos_0001', PUBLIC = 'demo-team/notes', PRIVATE = 'demo-team/notes-private';
+  const WRITE = 'github_pat_DEMO_write_token_for_both_demo_repos_0001', READ = 'github_pat_DEMO_read_only_token_for_the_private_repo', PUBLIC = 'demo-team/notes', PRIVATE = 'demo-team/notes-private';
   const T = { timeout: 5000 };
   await page.waitForSelector('body[data-ready]', T);
   const status = async () => page.locator('#status').innerText();
@@ -358,25 +358,60 @@ async function checkGitStore(page, where, scheme, size) {
   // reading: the public repo without a token, the private one asks for a token; the file in another format is left out
   let text = await status();
   if (!/demo-team\/notes: 3 notes, 1 file left out/.test(text)) fail(where, `the public repo reads "${text.split('\n')[0]}"`);
-  if (!/notes-private: .*needs a token/.test(text)) fail(where, 'the private repo does not say it needs a token');
+  if (!/notes-private: .*only with a token: it is private/.test(text)) fail(where, 'the private repo does not say why it needs a token');
   if (await page.locator('#shared .note').count() !== 3) fail(where, 'the public repo\'s 3 notes are not shown');
 
-  // the panel: a token pasted for the private repo opens it
+  // the panel lists the sources
   await page.click('#open-panel');
   await page.locator('.gs').waitFor({ state: 'visible', ...T });
   await panelFits('sources');
+  await page.keyboard.press('Escape');
+
+  // the token setup: the private repo has "Add a token" next to its status, which opens the panel at its token field
+  if (await page.locator(`#status li[data-repo="${PUBLIC}"] .btn`).count()) fail(where, 'the public repo asks for a token');
+  if (shots) await page.locator('.tokens').screenshot({ path: join(shots, `git-store-walkthrough-${size}-${scheme}.png`) });
+  await page.locator('[data-copy="write-token"]').click();
+  await wait(() => /copied|selected/.test(document.getElementById('copy-msg').textContent), null, 'the Copy button does not say what it did');
+  const need = page.locator(`#status li[data-repo="${PRIVATE}"] .btn`, { hasText: 'Add a token' });
+  if (!await need.count()) fail(where, 'the private repo has no "Add a token" next to its status');
+  else await need.click();
+  await page.locator('.gs').waitFor({ state: 'visible', ...T });
   const row = page.locator(`.gs-source[data-repo="${PRIVATE}"]`);
-  await row.locator('.gs-btn', { hasText: 'Add a token' }).click();
+  await wait(r => document.activeElement && document.activeElement.matches(`.gs-source[data-repo="${r}"] .gs-input`), PRIVATE, 'the private repo\'s token field is not open and focused');
+  if (!/private/.test(await row.locator('.gs-problem').innerText().catch(() => ''))) fail(where, 'the panel does not say why the private repo needs a token');
+  // the help: numbered steps, folded until asked for; the panel still fits
+  const help = row.locator('.gs-help');
+  if (await help.evaluate(d => d.open)) fail(where, 'the token help is open before it is asked for');
+  await help.locator('summary').click();
+  if (await help.locator('li').count() !== 6) fail(where, 'the token help does not have its 6 steps');
+  if (!await help.locator(`a[href="https://github.com/settings/personal-access-tokens/new"]`).count()) fail(where, 'the token help does not link to GitHub\'s page');
+  await panelFits('token help');
+  const wide = await page.evaluate(() => { const b = document.querySelector('.gs-body'); return b.scrollWidth - b.clientWidth; });
+  if (wide > 0) fail(where, `the panel with the token help is ${wide} px wider than it can show`);
+  await row.locator('.gs-input').scrollIntoViewIfNeeded();
+  await shot('token');
+  // a wrong token is refused; the read-only one reads the private repo, without a way to publish to it
   await row.locator('.gs-input').fill('not a token');
   await row.locator('.gs-btn', { hasText: 'Save token' }).click();
-  if (!/doesn’t look like a GitHub token/.test(await row.locator('.gs-token .gs-note').first().innerText())) fail(where, 'a wrong token is not refused');
-  await row.locator('.gs-input').fill(WRITE);
+  if (!/doesn’t look like a GitHub token/.test(await row.locator('.gs-token .gs-note.gs-warn').innerText().catch(() => ''))) fail(where, 'a wrong token is not refused');
+  await row.locator('.gs-input').fill(READ);
   await row.locator('.gs-btn', { hasText: 'Save token' }).click();
-  await row.locator('.gs-badge', { hasText: 'You can edit' }).waitFor(T).catch(() => fail(where, 'the private repo does not open with the token'));
+  await row.locator('.gs-badge', { hasText: 'Read only' }).waitFor(T).catch(() => fail(where, 'the read-only token does not say "Read only"'));
+  await wait(() => /^Token saved\. .*1 note, read only/.test(document.querySelector('.gs-done')?.textContent), null, 'saving the read-only token does not say what changed');
+  await wait(() => /Secret tactic/.test(document.getElementById('shared').innerText), null, 'the private repo\'s note does not show with the read-only token');
+  if (await page.locator(`#publish-to option[value="${PRIVATE}"]`).count()) fail(where, 'the read-only private repo is offered to publish to');
+  // the write token replaces it: "You can edit"
+  await row.locator('[data-gs-token]').click();
+  await row.locator('.gs-input').fill(WRITE);
+  await row.locator('.gs-input').press('Enter');
+  await row.locator('.gs-badge', { hasText: 'You can edit' }).waitFor(T).catch(() => fail(where, 'the private repo does not open for editing with the write token'));
+  await wait(() => /^Token saved\. .*1 note, you can edit/.test(document.querySelector('.gs-done')?.textContent), null, 'saving the write token does not say what changed');
   if (await page.locator('.gs-input[type=password]').evaluateAll(els => els.some(e => e.value))) fail(where, 'a token field still holds the token');
+  if ((await page.locator('.gs').innerText()).includes('github_pat_DEMO')) fail(where, 'the panel shows a stored token');
   await shot('panel');
   await page.keyboard.press('Escape');
   if (await page.locator('.gs').isVisible()) fail(where, 'Esc did not close the panel');
+  await wait(r => [...document.querySelectorAll('#publish-to option')].some(o => o.value === r), PRIVATE, 'the private repo is not offered to publish to with the write token');
   await wait(() => /notes-private: 1 notes?, you can edit/.test(document.getElementById('status').innerText), null, 'the private repo\'s note is not listed');
 
   // publishing: one PUT with the token in its header only

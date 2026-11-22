@@ -39,12 +39,23 @@
   .msg{min-height:1.5em;margin:6px 0 0}
   .msg.warn{color:#b4500f}
   @media (prefers-color-scheme: dark){ .msg.warn{color:#ffb071} }
-  .status{font-size:14px;color:var(--demo-muted);margin:0 0 4px}
+  .status{font-size:14px;color:var(--demo-muted);margin:0 0 4px;list-style:none;padding:0}
+  .status li{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
+  .status li span{flex:1 1 16em;min-width:0}
+  .status .need{min-height:44px;padding:6px 14px;font-size:14px}
   .option{display:flex;gap:10px;align-items:flex-start;cursor:pointer;font-size:14px}
   .option input{width:20px;height:20px;margin:2px 0 0;flex:none}
   .log{list-style:none;padding:0;margin:8px 0 0;max-height:360px;overflow:auto;display:grid;gap:6px}
   .log li+li{margin-top:0}
-  .tokens code{display:block;margin:2px 0 8px;user-select:all;-webkit-user-select:all}
+  .steps{padding-left:22px;display:grid;gap:8px}
+  .steps li+li{margin-top:0}
+  .steps .row{margin:6px 0 0}
+  .steps .msg{min-height:0;margin:0}
+  .steps .msg:empty{display:none}
+  .token-pick{display:grid;gap:4px;margin-top:6px}
+  .token-line{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+  .token-line code{flex:1;min-width:0;font-size:12px;user-select:all;-webkit-user-select:all}
+  .token-line .btn{flex:none;min-width:64px;padding:8px 12px;font-size:14px}
   section h2 .muted{font-weight:400;font-size:15px}
 </style>
 </head>
@@ -76,7 +87,7 @@
           <label class="field grow">Publish to<select id="publish-to"></select></label>
           <label class="field grow">Note for the commit (optional)<input id="publish-note" type="text" placeholder="What changed"></label>
         </div>
-        <p class="small muted" id="publish-hint">Publishing needs a token with write access: use the button on the right, or paste one in “Sources and tokens…”.</p>
+        <p class="small muted" id="publish-hint">Publishing needs a token with write access for a repo: see <strong>Try the token setup</strong>.</p>
         <div class="row"><button class="btn" type="button" id="mine-add">New note</button></div>
         <p class="msg small" id="mine-msg" role="status"></p>
       </section>
@@ -113,13 +124,32 @@
     </div>
 
     <aside class="stack">
-      <section class="card tokens" aria-labelledby="try-h">
-        <h2 id="try-h">Things to try</h2>
-        <p class="small">The public repo reads without a token. The private one needs a token: paste one in
-          <strong>Sources and tokens…</strong>.</p>
-        <p class="small muted">Write token, both repos:</p><code id="write-token"></code>
-        <p class="small muted">Read-only token, the private repo:</p><code id="read-token"></code>
-        <div class="row"><button class="btn" type="button" id="use-write">Use the write token for both</button></div>
+      <section class="card tokens" aria-labelledby="token-h">
+        <h2 id="token-h">Try the token setup</h2>
+        <p class="small muted">The public repo reads without a token. The private one, and every save, needs one.</p>
+        <ol class="steps small">
+          <li><strong>From the repos</strong> says GitHub shows <code>demo-team/notes-private</code> only with a token.</li>
+          <li>Tap <strong>Add a token</strong> next to it. The panel opens at that repo’s token field.
+            <div class="row"><button class="btn" type="button" id="walk-add">Add a token</button></div></li>
+          <li>Copy a demo token:
+            <div class="token-pick">
+              <span class="muted">Write, both repos</span>
+              <div class="token-line"><code id="write-token"></code><button class="btn copy" type="button" data-copy="write-token">Copy</button></div>
+              <span class="muted">Read only, the private repo</span>
+              <div class="token-line"><code id="read-token"></code><button class="btn copy" type="button" data-copy="read-token">Copy</button></div>
+            </div>
+            <p class="msg" id="copy-msg" role="status"></p></li>
+          <li>Paste it in the field and tap <strong>Save token</strong>.</li>
+          <li>See it load: the secret note appears.
+            <br>Write token: <strong>You can edit</strong>, <strong>Remove</strong> on the note, and the repo under <strong>Publish to</strong>.
+            <br>Read-only token: <strong>Read only</strong>, and nothing to publish to there.</li>
+        </ol>
+        <p class="small muted">A real token is made on GitHub: the panel’s <strong>How do I make a token?</strong> says how.</p>
+        <div class="row"><button class="btn" type="button" id="use-write">Shortcut: use the write token for both</button></div>
+      </section>
+
+      <section class="card" aria-labelledby="try-h">
+        <h2 id="try-h">Other things to try</h2>
         <div class="row"><button class="btn" type="button" id="elsewhere">Change a note on another device</button></div>
         <p class="small muted">Then publish or save that note: the panel asks whether to overwrite, keep theirs or save a copy.</p>
         <label class="option"><input type="checkbox" id="offline"><span>GitHub can’t be reached (offline)</span></label>

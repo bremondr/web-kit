@@ -33,6 +33,22 @@ export class GitStoreConflict extends GitHubError {
   }
 }
 
+/** Whether a source (an entry of store.sources()) needs a token, or a new one, before it works: null when it
+    doesn't, or {action: 'add' | 'replace', code, reason}. `reason` is one sentence to show next to the button;
+    `label` names a source in it ("repo" unless given). A token that can only read is not a need: it is a choice. */
+export function tokenNeed(source, {label = 'repo'} = {}){
+  const code = source && source.error && source.error.code;
+  if (!code) return null;
+  const has = !!source.hasToken;
+  if (code === 'no-token') return {action: 'add', code, reason: `Saving to this ${label} needs a GitHub token for it.`};
+  if (code === 'not-found') return has
+    ? {action: 'replace', code, reason: `GitHub can’t find this ${label} with the token on this device: the token may be for another ${label}, or the name is wrong.`}
+    : {action: 'add', code, reason: `GitHub shows this ${label} only with a token: it is private (or the name is wrong). A token for it lets this device read it.`};
+  if (code === 'auth') return {action: has ? 'replace' : 'add', code, reason: 'GitHub didn’t accept the token: it may have expired or been deleted. Make a new one and paste it here.'};
+  if (code === 'forbidden') return {action: has ? 'replace' : 'add', code, reason: `The token can’t do that in this ${label}. Make one for this ${label} with Contents: Read and write.`};
+  return null;
+}
+
 const TOKEN = /^[A-Za-z0-9_]{20,255}$/;
 const randomId = () => {
   const abc = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
