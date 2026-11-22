@@ -272,13 +272,16 @@ async function checkFeedback(page, where, scheme, size) {
       const stream = c.captureStream(20);
       // a real capture is already running when the browser hands it over; a canvas stream may not have a frame yet
       // (WebKit can take seconds), so hand it over once a video playing it has one, as the real thing would
-      const v = document.createElement('video');
-      v.muted = true; v.playsInline = true; v.srcObject = stream;
-      v.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;opacity:0';
+      // the video stays attached and playing: in WebKit, detaching it can leave the stream with no frames for the
+      // kit's own video. The next fake capture removes it
+      if (fakeCapture.video) fakeCapture.video.remove();
+      const v = fakeCapture.video = document.createElement('video');
+      v.muted = true; v.playsInline = true; v.autoplay = true; v.srcObject = stream;
+      v.setAttribute('data-fk-skip', '');
+      v.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;opacity:0;pointer-events:none';
       document.documentElement.appendChild(v);
       v.play().catch(() => {});
-      for (let t = 0; t < 200 && !(v.readyState >= 2 && v.videoWidth); t++) { paint(); await new Promise(ok => setTimeout(ok, 50)); }
-      v.srcObject = null; v.remove();
+      for (let t = 0; t < 100 && !(v.readyState >= 2 && v.videoWidth); t++) { paint(); await new Promise(ok => setTimeout(ok, 50)); }
       return stream;
     };
     // on the prototype and the object itself: WebKit ignores a plain assignment
