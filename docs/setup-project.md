@@ -124,6 +124,43 @@ node tools/update-vendor.mjs feedback-kit@1.2.0    # a given version, also an ol
 node tools/update-vendor.mjs --verify              # are the copies exactly their releases?
 ```
 
+## Taking a new major version
+
+A new major version (2.0.0 after 1.x) means the project has to change something, so the daily workflow doesn't take it: its log only says the version exists. The release notes, from the module's changelog, end with "What to change in a project". To have Claude Code do it, open a session in the project and paste this, with the module and version filled in:
+
+```text
+Update <module> in this project to <version> from bremondr/web-kit. It's a major version, so it needs changes
+here as well as the new copy.
+
+Read first:
+- the release notes, especially "What to change in a project":
+  https://github.com/bremondr/web-kit/releases/tag/<module>-v<version>
+- the module's README at that version:
+  https://github.com/bremondr/web-kit/blob/<module>-v<version>/<module>/README.md
+- the module's demo page at that version, a short, complete example of the new interface:
+  https://github.com/bremondr/web-kit/blob/<module>-v<version>/demo/<module>.js
+  (live, showing main, at https://bremondr.github.io/web-kit/demo/)
+
+If the project doesn't use the module yet (it isn't in vendor.json), stop and tell me: that is a setup, not an
+update (see the prompt at the end of web-kit's docs/setup-project.md).
+
+Then:
+1. Run node tools/update-vendor.mjs <module>@<version>, then node tools/update-vendor.mjs --verify. Don't edit the
+   vendored copy.
+2. Make every change "What to change in a project" lists, in the project's own files outside the vendored folder:
+   new files in the service worker's list, new or renamed options, anything removed. Where it asks for a choice,
+   say what you chose and why.
+3. Update anything in README.md or CLAUDE.md that the new version makes wrong.
+4. Run the project's checks. Then try it in a browser at iPad (1180 × 820, 820 × 1180), phone (390 × 844) and
+   desktop (1440 × 900) sizes, in light and dark mode, on each kind of page the app has, and show me screenshots.
+5. Open a pull request that lists what changed and anything that looked wrong.
+
+If something needs a change in the module, don't work around it here: describe it for an issue in
+bremondr/web-kit and tell me.
+```
+
+For feedback-kit 2.0.0 (whole-page picture, own screenshot, screen capture), "What to change" covers: `page.js` in the service worker's list, `page: {fonts}` and `area`, a `pictureLabel` for the app's own `picture` (or removing it), and `data-fk-skip`.
+
 ## When web-kit's consumer files change
 
 `consumer/update-vendor.mjs` and `update-vendor.yml` change rarely. When they do, [`consumer/CHANGELOG.md`](../consumer/CHANGELOG.md) says what changed and whether projects should copy them again (step 1).
@@ -135,7 +172,7 @@ node tools/update-vendor.mjs --verify              # are the copies exactly thei
 | The update run fails at "Open or update the pull request" with "GitHub Actions is not permitted to create or approve pull requests" | No `VENDOR_PR_TOKEN`, and the setting is off. Add the token (step 6). |
 | The update run fails at checkout, or with 401/403 when pushing | The token expired or lacks a permission. Make a new one (step 6) and set the secret again. |
 | An update pull request has no checks or preview | It was opened with the workflow's own token. Close and reopen it, and add `VENDOR_PR_TOKEN`. |
-| "feedback-kit: 2.0.0 is a new major version" in the log, and no pull request | New major versions aren't taken by themselves. Read the module's changelog, then run `node tools/update-vendor.mjs --major` and adapt the project. |
+| "feedback-kit: 2.0.0 is a new major version" in the log, and no pull request | New major versions aren't taken by themselves. See [Taking a new major version](#taking-a-new-major-version). |
 | `--verify` says a file differs | Someone edited the copy. Move the change into web-kit (or drop it), then run `node tools/update-vendor.mjs <module>@<version>` to restore the copy. |
 | "No vendor.json here" | Run the script from the project's root. |
 
