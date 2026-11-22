@@ -81,7 +81,7 @@ Browser code is tried in `demo/`, not in a project: each page imports its module
 
 1. From the repository's root, run `python3 -m http.server` (or any static server) and open <http://localhost:8000/demo/>.
 2. Look at the page at iPad sizes (1180 × 820 and 820 × 1180) and phone size (390 × 844), in light and dark mode. The browser's device toolbar does this; on a real iPad, open the computer's address on the same network.
-3. Run `node tools/check-demo.mjs`. It drives every demo page in headless Chromium at those sizes and in both modes: no errors, nothing wider than the screen, and each module's own steps (for feedback-kit: the panel opens with the right picture, a stroke can be drawn and undone, the issue link is filled in). It needs Playwright with Chromium:
+3. Run `node tools/check-demo.mjs`. It drives every demo page in headless Chromium at those sizes and in both modes: no errors, nothing wider than the screen, and each module's own steps (for feedback-kit: the panel opens with the right picture, a stroke can be drawn and undone, the issue link is filled in; for git-store-kit, against a fake GitHub in the page: tokens, publishing, conflicts, history, the working folder and offline). It needs Playwright with Chromium:
    ```sh
    npm install --no-save playwright
    npx playwright install chromium

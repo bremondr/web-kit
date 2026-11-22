@@ -5,6 +5,11 @@
    picture, both keep the chart's CSS variables and classes, a stroke can be drawn and undone, the person's own
    screenshot can be chosen, pasted or dropped instead, a (faked) real screen capture works with the button and at the
    tap and leaves the panel out, the whole scrollable page can be pictured, and the issue link is filled in (also with the Reopen link too long, so the fallback is used).
+   On the git-store-kit page (against its fake GitHub): the public repo loads without a token and the private one
+   asks for one; a token pasted in the panel opens it; publishing sends one commit; a change made elsewhere brings up
+   the conflict question, and each answer works; an item's history lists its versions and opens and restores one;
+   the working folder opens, edits and saves; offline shows the saved copy; and no token ever shows in the request
+   list. The panel fits on the screen in each view.
 
      node tools/check-demo.mjs                        (exit code 1 when something is wrong)
      node tools/check-demo.mjs --screenshots <dir>    also save a picture of each page and of the open panel
@@ -66,7 +71,7 @@ try {
   for (const scheme of SCHEMES) for (const [size, width, height] of SIZES) {
     const context = await browser.newContext({ viewport: { width, height }, colorScheme: scheme, hasTouch: width < 600, deviceScaleFactor: shots ? 2 : 1 });
     if (browserName === 'chromium') await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: base });
-    for (const pageName of ['index.html', 'feedback-kit.html']) {
+    for (const pageName of ['index.html', 'feedback-kit.html', 'git-store-kit.html']) {
       const where = `${pageName} ${size} ${scheme}`;
       const page = await context.newPage();
       page.on('pageerror', e => fail(where, `page error: ${e.message}`));
@@ -79,6 +84,7 @@ try {
       if (overflow > 0) fail(where, `the page is ${overflow} px wider than the screen`);
       if (shots) await page.screenshot({ path: join(shots, `${pageName.replace('.html', '')}-${size}-${scheme}.png`), fullPage: true });
       if (pageName === 'feedback-kit.html') await checkFeedback(page, where, scheme, size).catch(e => fail(where, e.message.split('\n')[0]));
+      if (pageName === 'git-store-kit.html') await checkGitStore(page, where, scheme, size).catch(e => fail(where, e.message.split('\n')[0]));
       await page.close();
     }
     await context.close();
@@ -331,6 +337,106 @@ async function checkFeedback(page, where, scheme, size) {
   if (Math.abs(tall[0] - tall[1]) > 0.02) fail(where, `the whole page's picture is ${tall[0].toFixed(2)} high for 1 wide, the page ${tall[1].toFixed(2)}`);
   await page.click('.fk-x');
   await page.uncheck('#full-page');
+}
+
+async function checkGitStore(page, where, scheme, size) {
+  const WRITE = 'github_pat_DEMO_write_token_for_both_demo_repos_0001', PUBLIC = 'demo-team/notes', PRIVATE = 'demo-team/notes-private';
+  const T = { timeout: 5000 };
+  await page.waitForSelector('body[data-ready]', T);
+  const status = async () => page.locator('#status').innerText();
+  const shot = async name => { if (shots) await page.screenshot({ path: join(shots, `git-store-${name}-${size}-${scheme}.png`) }); };
+  const panelFits = async view => {
+    const r = await page.evaluate(() => {
+      const c = document.querySelector('.gs-card'), b = c && c.getBoundingClientRect();
+      return b && { inside: b.left >= 0 && b.top >= 0 && b.right <= innerWidth + 0.5 && b.bottom <= innerHeight + 0.5, wide: document.documentElement.scrollWidth - innerWidth };
+    });
+    if (!r) fail(where, `no panel for ${view}`);
+    else if (!r.inside) fail(where, `the panel (${view}) does not fit on the screen`);
+  };
+  const wait = (fn, arg, what) => page.waitForFunction(fn, arg, T).catch(() => fail(where, what));
+
+  // reading: the public repo without a token, the private one asks for a token; the file in another format is left out
+  let text = await status();
+  if (!/demo-team\/notes: 3 notes, 1 file left out/.test(text)) fail(where, `the public repo reads "${text.split('\n')[0]}"`);
+  if (!/notes-private: .*needs a token/.test(text)) fail(where, 'the private repo does not say it needs a token');
+  if (await page.locator('#shared .note').count() !== 3) fail(where, 'the public repo\'s 3 notes are not shown');
+
+  // the panel: a token pasted for the private repo opens it
+  await page.click('#open-panel');
+  await page.locator('.gs').waitFor({ state: 'visible', ...T });
+  await panelFits('sources');
+  const row = page.locator(`.gs-source[data-repo="${PRIVATE}"]`);
+  await row.locator('.gs-btn', { hasText: 'Add a token' }).click();
+  await row.locator('.gs-input').fill('not a token');
+  await row.locator('.gs-btn', { hasText: 'Save token' }).click();
+  if (!/doesn’t look like a GitHub token/.test(await row.locator('.gs-token .gs-note').first().innerText())) fail(where, 'a wrong token is not refused');
+  await row.locator('.gs-input').fill(WRITE);
+  await row.locator('.gs-btn', { hasText: 'Save token' }).click();
+  await row.locator('.gs-badge', { hasText: 'You can edit' }).waitFor(T).catch(() => fail(where, 'the private repo does not open with the token'));
+  if (await page.locator('.gs-input[type=password]').evaluateAll(els => els.some(e => e.value))) fail(where, 'a token field still holds the token');
+  await shot('panel');
+  await page.keyboard.press('Escape');
+  if (await page.locator('.gs').isVisible()) fail(where, 'Esc did not close the panel');
+  await wait(() => /notes-private: 1 notes?, you can edit/.test(document.getElementById('status').innerText), null, 'the private repo\'s note is not listed');
+
+  // publishing: one PUT with the token in its header only
+  await page.click('#use-write');
+  await wait(r => [...document.querySelectorAll('#publish-to option')].some(o => o.value === r), PUBLIC, 'the public repo is not offered to publish to');
+  await page.selectOption('#publish-to', PUBLIC);
+  const first = page.locator('#mine .note').first();
+  await first.locator('.btn', { hasText: /^Publish/ }).click();
+  await wait(() => /^Published/.test(document.getElementById('mine-msg').textContent), null, 'publishing did not say it worked');
+  if (await page.locator('#shared .note').count() !== 5) fail(where, `after publishing, ${await page.locator('#shared .note').count()} notes show, not 5`);
+  const log = await page.locator('#log').innerText();
+  if (!/PUT \/repos\/demo-team\/notes\/contents\/notes\/my-drill-1\.json 201 · Authorization: Bearer ••••/.test(log)) fail(where, 'the request list does not show the PUT, with the token masked');
+
+  // a conflict: changed on another device, then published again; each answer
+  for (const [answer, expect] of [['Save mine as a copy', /as a copy/], ['Keep theirs, drop mine', /Kept the version on GitHub/], ['Overwrite with mine', /^Published/]]) {
+    await page.evaluate(() => { document.getElementById('try-msg').textContent = ''; });
+    await page.click('#elsewhere');
+    await wait(() => /was changed on another device/.test(document.getElementById('try-msg').textContent), null, 'the change on another device did not happen');
+    await first.locator('.btn', { hasText: /^Publish/ }).click();
+    await page.locator('.gs-card', { hasText: 'Changed meanwhile' }).waitFor(T).catch(() => fail(where, 'no conflict question'));
+    await panelFits('conflict');
+    if (answer === 'Save mine as a copy') await shot('conflict');
+    await page.locator('.gs-choices .gs-btn', { hasText: answer }).click();
+    await wait(e => new RegExp(e).test(document.getElementById('mine-msg').textContent), expect.source, `"${answer}" did not say what it did`);
+  }
+  if (await page.locator('#shared .note').count() !== 6) fail(where, 'the copy is not listed next to the other one');
+
+  // history: three versions of the vertical stack; open the oldest; restore it
+  await page.locator('#shared .note', { hasText: 'Vertical stack' }).locator('.btn', { hasText: 'History' }).click();
+  await page.locator('.gs-version').nth(2).waitFor(T).catch(() => fail(where, 'the history does not list 3 versions'));
+  await panelFits('history');
+  await shot('history');
+  const oldest = page.locator('.gs-version').last();
+  await oldest.locator('.gs-btn', { hasText: 'Restore' }).click();
+  await oldest.locator('.gs-btn', { hasText: 'Restore this version' }).click();
+  await wait(() => /^Restored/.test(document.querySelector('.gs-body .gs-note').textContent), null, 'restoring did not work');
+  if (await page.locator('.gs-version').count() !== 4) fail(where, 'the restore is not the newest of 4 versions');
+  await page.locator('.gs-version').last().locator('.gs-btn', { hasText: 'Open' }).click();
+  await page.locator('#old-card').waitFor(T).catch(() => fail(where, 'opening an old version shows nothing'));
+  if (!/one cut at a time\.$/m.test(await page.locator('#old').innerText())) fail(where, 'the old version is not the first one');
+
+  // working folder: open, edit, save as a commit
+  await page.selectOption('#folder-pick', `${PUBLIC}#warmup`);
+  await page.click('#folder-open');
+  await page.locator('#folder-form').waitFor(T);
+  await page.fill('#folder-text', 'Edited in the working folder.');
+  await page.click('#folder-save');
+  await wait(() => /^Saved as one commit/.test(document.getElementById('folder-msg').textContent), null, 'saving from the working folder did not work');
+  await wait(() => /Edited in the working folder/.test(document.getElementById('shared').innerText), null, 'the saved note is not shown');
+
+  // offline: the saved copy, and why
+  await page.check('#offline');
+  await wait(() => /can’t be reached.*saved copy/.test(document.getElementById('status').innerText), null, 'offline does not show the saved copy');
+  if (await page.locator('#shared .note').count() < 6) fail(where, 'offline, the notes are gone');
+  await page.uncheck('#offline');
+
+  // no token anywhere in the request list
+  if ((await page.locator('#log').innerText()).includes('github_pat_')) fail(where, 'a token shows in the request list');
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+  if (overflow > 0) fail(where, `after trying it, the page is ${overflow} px wider than the screen`);
 }
 
 async function issueOf(page) {

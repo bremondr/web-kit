@@ -1,0 +1,7 @@
+{
+  "format": "demo-note",
+  "id": "czech",
+  "title": "Šňůra a „uvozovky“",
+  "text": "Letters outside ASCII survive the trip: the file is UTF-8, and the module reads and writes it that way.",
+  "color": "leaf"
+}

@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>git-store-kit demo</title>
+<link rel="stylesheet" href="demo.css">
+<link rel="stylesheet" href="../git-store-kit/git-store-kit.css">
+<style>
+  :root{
+    /* the panel, themed with its --gs-* properties */
+    --gs-surface:var(--demo-surface); --gs-ink:var(--demo-ink); --gs-muted:var(--demo-muted); --gs-rule:var(--demo-rule);
+    --gs-accent:var(--demo-accent); --gs-on-accent:var(--demo-on-accent); --gs-font:var(--demo-font);
+    --note-sun:#f6c445; --note-sea:#3b8fd9; --note-leaf:#3aa35c; --note-rose:#d9487a;
+  }
+  .topbar{position:sticky;top:0;z-index:2;display:flex;gap:12px;align-items:center;justify-content:space-between;
+    padding:10px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px));
+    background:color-mix(in srgb,var(--demo-surface) 92%,transparent);border-bottom:1px solid var(--demo-rule);font-size:15px}
+  .layout{display:grid;gap:16px;grid-template-columns:minmax(0,1fr)}
+  @media (min-width:1000px){ .layout{grid-template-columns:minmax(0,1fr) 340px;align-items:start} }
+  .notes{list-style:none;padding:0;display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));margin:10px 0}
+  .notes li+li{margin-top:0}
+  .note{border:1px solid var(--demo-rule);border-left:6px solid var(--c);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+  .note p{margin:0}
+  .note-sun{--c:var(--note-sun)} .note-sea{--c:var(--note-sea)} .note-leaf{--c:var(--note-leaf)} .note-rose{--c:var(--note-rose)}
+  .note-head{display:flex;gap:8px;align-items:baseline;justify-content:space-between}
+  .tag{font-size:12px;padding:2px 8px;border-radius:999px;background:color-mix(in srgb,var(--demo-accent) 15%,transparent);color:var(--demo-accent);white-space:nowrap}
+  .note-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto}
+  .note-actions .btn{min-height:40px;padding:6px 12px;font-size:14px}
+  .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}
+  .field{display:grid;gap:4px;font-size:14px;min-width:0}
+  .field select{width:100%}
+  .layout>*{min-width:0}
+  .layout .stack{grid-template-columns:minmax(0,1fr)}
+  select{max-width:100%}
+  .field input,.field select,.field textarea,.row select,.row input[type=text]{font:inherit;font-size:16px;min-height:44px;padding:6px 10px;border-radius:8px;border:1px solid var(--demo-rule);background:var(--demo-bg);color:inherit;min-width:0}
+  .field textarea{min-height:90px;resize:vertical}
+  .grow{flex:1 1 12em}
+  .msg{min-height:1.5em;margin:6px 0 0}
+  .msg.warn{color:#b4500f}
+  @media (prefers-color-scheme: dark){ .msg.warn{color:#ffb071} }
+  .status{font-size:14px;color:var(--demo-muted);margin:0 0 4px}
+  .option{display:flex;gap:10px;align-items:flex-start;cursor:pointer;font-size:14px}
+  .option input{width:20px;height:20px;margin:2px 0 0;flex:none}
+  .log{list-style:none;padding:0;margin:8px 0 0;max-height:360px;overflow:auto;display:grid;gap:6px}
+  .log li+li{margin-top:0}
+  .tokens code{display:block;margin:2px 0 8px;user-select:all;-webkit-user-select:all}
+  section h2 .muted{font-weight:400;font-size:15px}
+</style>
+</head>
+<body>
+<nav class="topbar" aria-label="Demos"><a href="./">web-kit demos</a><span class="muted">git-store-kit</span></nav>
+<main class="page">
+  <h1>git-store-kit</h1>
+  <p class="lead">Notes kept as JSON files in GitHub repos, one file per note, every save a commit. The page runs
+    against a <strong>fake GitHub</strong> in the page, so nothing leaves it and the tokens below are made up; it
+    starts over when you reload. The module comes from <code>../git-store-kit/</code>, the branch this page was served from.</p>
+
+  <div class="layout">
+    <div class="stack">
+      <section class="card" aria-labelledby="shared-h">
+        <h2 id="shared-h">From the repos <span class="muted">what everyone sees</span></h2>
+        <ul class="status" id="status"></ul>
+        <ul class="notes" id="shared"></ul>
+        <p class="msg small" id="shared-msg" role="status"></p>
+        <div class="row">
+          <button class="btn primary" type="button" id="open-panel">Sources and tokens…</button>
+          <button class="btn" type="button" id="reload">Reload</button>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="mine-h">
+        <h2 id="mine-h">Publish <span class="muted">notes in this browser, like Ultimate Playbook</span></h2>
+        <ul class="notes" id="mine"></ul>
+        <div class="row">
+          <label class="field grow">Publish to<select id="publish-to"></select></label>
+          <label class="field grow">Note for the commit (optional)<input id="publish-note" type="text" placeholder="What changed"></label>
+        </div>
+        <p class="small muted" id="publish-hint">Publishing needs a token with write access: use the button on the right, or paste one in “Sources and tokens…”.</p>
+        <div class="row"><button class="btn" type="button" id="mine-add">New note</button></div>
+        <p class="msg small" id="mine-msg" role="status"></p>
+      </section>
+
+      <section class="card" aria-labelledby="folder-h">
+        <h2 id="folder-h">Working folder <span class="muted">open, edit, save back, like Protogames</span></h2>
+        <div class="row">
+          <select id="folder-pick" class="grow" aria-label="Note to open"></select>
+          <button class="btn" type="button" id="folder-open">Open from repo</button>
+        </div>
+        <div id="folder-form" hidden>
+          <p class="small muted" id="folder-where"></p>
+          <div class="row">
+            <label class="field grow">Title<input id="folder-title" type="text"></label>
+            <label class="field">Colour<select id="folder-color"><option value="sun">Sun</option><option value="sea">Sea</option><option value="leaf">Leaf</option><option value="rose">Rose</option></select></label>
+          </div>
+          <label class="field">Text<textarea id="folder-text"></textarea></label>
+          <div class="row">
+            <label class="field grow">Note for the commit (optional)<input id="folder-note" type="text" placeholder="What changed"></label>
+          </div>
+          <div class="row">
+            <button class="btn primary" type="button" id="folder-save">Save to repo</button>
+            <button class="btn" type="button" id="folder-history">History</button>
+          </div>
+        </div>
+        <p class="msg small" id="folder-msg" role="status"></p>
+      </section>
+
+      <section class="card" id="old-card" hidden aria-labelledby="old-h">
+        <h2 id="old-h">An older version</h2>
+        <div id="old"></div>
+        <button class="btn" type="button" id="old-close">Close</button>
+      </section>
+    </div>
+
+    <aside class="stack">
+      <section class="card tokens" aria-labelledby="try-h">
+        <h2 id="try-h">Things to try</h2>
+        <p class="small">The public repo reads without a token. The private one needs a token: paste one in
+          <strong>Sources and tokens…</strong>.</p>
+        <p class="small muted">Write token, both repos:</p><code id="write-token"></code>
+        <p class="small muted">Read-only token, the private repo:</p><code id="read-token"></code>
+        <div class="row"><button class="btn" type="button" id="use-write">Use the write token for both</button></div>
+        <div class="row"><button class="btn" type="button" id="elsewhere">Change a note on another device</button></div>
+        <p class="small muted">Then publish or save that note: the panel asks whether to overwrite, keep theirs or save a copy.</p>
+        <label class="option"><input type="checkbox" id="offline"><span>GitHub can’t be reached (offline)</span></label>
+        <label class="option"><input type="checkbox" id="stale"><span>raw.githubusercontent.com serves old copies</span></label>
+        <div class="row"><button class="btn" type="button" id="limit">Use up the 60 reads without a token</button></div>
+        <p class="msg small" id="try-msg" role="status"></p>
+      </section>
+
+      <section class="card" aria-labelledby="log-h">
+        <h2 id="log-h">Requests sent</h2>
+        <p class="small muted" id="log-count"></p>
+        <ol class="log" id="log"></ol>
+      </section>
+
+      <section class="card" aria-labelledby="real-h">
+        <h2 id="real-h">The real GitHub</h2>
+        <p class="small">Reads <code>demo/git-store-sample/</code> from <code>bremondr/web-kit</code> on GitHub,
+          without a token, the way a public repo is read.</p>
+        <button class="btn" type="button" id="real-load">Read it from GitHub</button>
+        <p class="msg small" id="real-msg" role="status"></p>
+        <ul class="notes" id="real"></ul>
+      </section>
+    </aside>
+  </div>
+</main>
+<script type="module" src="git-store-kit.js"></script>
+</body>
+</html>
