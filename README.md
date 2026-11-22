@@ -2,10 +2,12 @@
 
 Reusable modules for static web apps: plain ES modules and CSS, with no dependencies, no build step and no server. Each module is one folder that a project copies, and each is released on its own with numbered versions.
 
+Besides the modules, web-kit holds what every project needs around its app: [pull request previews](#previews-and-the-starter-template) on GitHub Pages, and a [starter template](#previews-and-the-starter-template) that a new project begins from.
+
 | Module | What it does | Newest | Used by |
 |---|---|---|---|
 | [`feedback-kit/`](feedback-kit/) | "Send feedback": a GitHub issue filled in with what was on screen, plus a picture to draw on | see [releases](https://github.com/bremondr/web-kit/releases) | [Ultimate Playbook](https://github.com/bremondr/ultimate-playbook), [Protogames](https://github.com/bremondr/protogames) |
-| [`git-store-kit/`](git-store-kit/) | An app's items as JSON files in GitHub repos, one file per item, every save a commit: public or private repos, tokens per repo, conflicts, history, offline copy | see [releases](https://github.com/bremondr/web-kit/releases) | planned: Ultimate Playbook (team drills), Protogames |
+| [`git-store-kit/`](git-store-kit/) | An app's items as JSON files in GitHub repos, one file per item, every save a commit: public or private repos, tokens per repo, conflicts, history, offline copy | see [releases](https://github.com/bremondr/web-kit/releases) | [Protogames](https://github.com/bremondr/protogames); planned: Ultimate Playbook (team drills) |
 
 ## How it works
 
@@ -19,6 +21,12 @@ Reusable modules for static web apps: plain ES modules and CSS, with no dependen
 - **A daily workflow** in the project (a copy of [`consumer/update-vendor.yml`](consumer/update-vendor.yml)) runs it and opens a pull request when there's something new, with the changelog. The project's checks and previews run on that pull request, and nothing changes until someone merges it. With a token set up in web-kit, projects are told about a release at once instead of at their next daily check.
 
 Copies are never edited in a project: change the module here, release it, and the projects update.
+
+## Previews and the starter template
+
+- **Pull request previews.** Every open pull request in a project is published next to the live site, at `/preview/pr-<number>/`, with a bot comment linking it, so a change can be tried on the iPad or a phone before it is merged. A preview keeps its own browser storage (local storage, IndexedDB, caches), so it never touches the live app's saved data, and it disappears when its pull request closes. web-kit itself uses them for its demo.
+- **Three shared files** do it: [`consumer/pages.yml`](consumer/pages.yml) (the deploy workflow), [`consumer/build-site.mjs`](consumer/build-site.mjs) (the site build) and [`consumer/preview-runtime.js`](consumer/preview-runtime.js) (what runs in a preview). A project copies them unchanged and puts what differs (the site's folder, the checks before publishing, a service worker to stamp) in a small `site.json`. Like `update-vendor.mjs`, they don't update themselves: a project copies them again when [`consumer/CHANGELOG.md`](consumer/CHANGELOG.md) says so. Adding them to a project: [Adding previews](docs/setup-project.md#adding-previews-to-a-project).
+- **The starter template.** [`template/`](template/) and `tools/new-project.mjs` make a new project that has, from its first commit, the previews, vendored modules with the daily update, `CLAUDE.md` and a README in the projects' style, and the checks in CI. It takes the shared files from `consumer/`, so a new project always starts with the newest ones. Step by step, with a prompt for Claude Code: [Starting a new project](docs/new-project.md).
 
 ## Guides
 
