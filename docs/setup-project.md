@@ -187,7 +187,7 @@ If the project already has a deploy workflow (`.github/workflows/pages.yml` or a
   "name": "Ultimate Playbook",
   "paths": ["index.html", "manifest.webmanifest", "sw.js", "css", "js", "icons"],
   "serviceWorker": "sw.js",
-  "checks": ["node --test", "node tools/check-imports.mjs"],
+  "checks": ["node --test tests/*.test.mjs", "node tools/check-imports.mjs"],
   "feedback": {"labels": ["feedback"], "event": "playbook:feedback"},
   "global": "PLAYBOOK_PREVIEW",
   "commentMarker": "<!-- playbook-preview -->",
