@@ -45,7 +45,15 @@ jobs:
           npx playwright install --with-deps ${{ matrix.browser }}
 
       - name: Demo pages in headless ${{ matrix.browser }}
-        run: node tools/check-demo.mjs --browser ${{ matrix.browser }} --screenshots demo-screenshots
+        # TEMPORARY DEBUG (#20): run WebKit several times and keep the logs
+        run: |
+          if [ "${{ matrix.browser }}" = webkit ]; then
+            fails=0
+            for i in 1 2 3 4 5; do echo "=== run $i"; node tools/check-demo.mjs --browser webkit || fails=$((fails+1)); done
+            echo "=== $fails of 5 runs failed"
+          else
+            node tools/check-demo.mjs --browser ${{ matrix.browser }} --screenshots demo-screenshots
+          fi
 
       # the pictures of each page and of the open panel, to look at from the run's summary
       - uses: actions/upload-artifact@v4

@@ -269,9 +269,41 @@ async function checkFeedback(page, where, scheme, size) {
       if (fakeCapture.answer !== 'yes') throw new DOMException('declined', 'NotAllowedError');
       const c = document.createElement('canvas'); c.width = 1280; c.height = 800;
       const x = c.getContext('2d'), paint = () => { x.fillStyle = '#12ab34'; x.fillRect(0, 0, c.width, c.height); };
-      paint(); setInterval(paint, 50);
-      return c.captureStream(20);
+      paint(); setInterval(() => { paint(); D.paints++; }, 50);
+      // TEMPORARY DEBUG (#20): log what the stream and the kit's video do
+      const D = window.capDebug = { t0: performance.now(), paints: 0, ev: [] };
+      const T = () => Math.round(performance.now() - D.t0);
+      const log = (...a) => D.ev.push(T() + 'ms ' + a.join(' '));
+      const s = c.captureStream(20), tr = s.getVideoTracks()[0];
+      log('stream', 'track', tr.readyState, 'muted=' + tr.muted, JSON.stringify(tr.getSettings ? tr.getSettings() : {}), 'vis=' + document.visibilityState);
+      for (const e of ['mute', 'unmute', 'ended']) tr.addEventListener(e, () => log('track-' + e, 'paints=' + D.paints));
+      setTimeout(() => log('track@1s', tr.readyState, 'muted=' + tr.muted, 'paints=' + D.paints), 1000);
+      return s;
     };
+    if (!window.capDebugHooks){
+      window.capDebugHooks = true;
+      const T = () => window.capDebug ? Math.round(performance.now() - capDebug.t0) : -1;
+      const log = (...a) => window.capDebug && capDebug.ev.push(T() + 'ms ' + a.join(' '));
+      const st = v => `rs=${v.readyState} ns=${v.networkState} vw=${v.videoWidth}x${v.videoHeight} paused=${v.paused} ct=${v.currentTime.toFixed(3)} err=${v.error && v.error.code}`;
+      new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.tagName === 'VIDEO'){
+        log('video-added', st(n), 'connected=' + n.isConnected);
+        let last = '';
+        const poll = setInterval(() => { const x = st(n).replace(/ ct=\S+/, ''); if (x !== last){ log('video', x, 'connected=' + n.isConnected); last = x; } if (!n.isConnected && !n.srcObject) clearInterval(poll); }, 10);
+        for (const e of ['loadedmetadata', 'loadeddata', 'canplay', 'playing', 'resize', 'waiting', 'stalled', 'emptied', 'error']) n.addEventListener(e, () => log('ev-' + e, st(n)));
+        if (n.requestVideoFrameCallback) n.requestVideoFrameCallback((now, md) => log('rvfc', md.width + 'x' + md.height, st(n)));
+      } }).observe(document.documentElement, { childList: true });
+      const play = HTMLMediaElement.prototype.play;
+      HTMLMediaElement.prototype.play = function(){ log('play()', st(this)); const p = play.call(this); p.then(() => log('play-ok', st(this)), e => log('play-rejected', e.name, e.message)); return p; };
+      const di = CanvasRenderingContext2D.prototype.drawImage;
+      CanvasRenderingContext2D.prototype.drawImage = function(src, ...a){
+        const r = di.call(this, src, ...a);
+        if (src instanceof HTMLVideoElement){
+          const cv = this.canvas, d = this.getImageData(cv.width >> 1, cv.height >> 1, 1, 1).data;
+          log('drawImage(video)', st(src), 'canvas=' + cv.width + 'x' + cv.height, 'center=' + [d[0], d[1], d[2], d[3]].join(','));
+        }
+        return r;
+      };
+    }
     // on the prototype and the object itself: WebKit ignores a plain assignment
     const put = (o, k, v) => Object.defineProperty(o, k, { value: v, configurable: true, writable: true });
     if (navigator.mediaDevices){
@@ -292,6 +324,7 @@ async function checkFeedback(page, where, scheme, size) {
     await page.waitForFunction(() => fakeCapture.asked > 0 && !document.querySelector('.fk').hidden, null, { timeout: 5000 }).catch(() => {});
     await ready().catch(() => fail(where, 'no picture after the screen capture'));
     const f = await page.evaluate(() => fakeCapture);
+    const dbg = await page.evaluate(() => window.capDebug && capDebug.ev.slice());   // TEMPORARY DEBUG (#20)
     if (f.asked !== 1) fail(where, `the screen capture was asked for ${f.asked} times`);
     if (f.panelShown) fail(where, 'the panel was on screen while capturing, so it would be in the picture');
     if (!(await page.locator('.fk').isVisible())) fail(where, 'the panel did not come back after the screen capture');
@@ -307,6 +340,9 @@ async function checkFeedback(page, where, scheme, size) {
     const said = await page.locator('.fk-status').textContent();
     if (!/No screen capture/.test(said)) fail(where, `after a declined capture the panel says "${said}"`);
     if (!near(await pixel([0.5, 0.5]), hex('#12ab34'), 8)) fail(where, 'after a declined capture the picture changed');
+    // TEMPORARY DEBUG (#20): what happened in the first (accepted) capture is in capDebug from before the decline
+    console.log(`DEBUG ${where} capture: ${f.asked === 1 ? '' : '(asked ' + f.asked + ')'}\n  ` + (dbg || []).join('\n  '));
+    console.log(`DEBUG ${where} probes:\n  ` + (await page.evaluate(probes)).join('\n  '));
   }
   await page.click('.fk-x');
   if (!coarse) {
@@ -532,3 +568,40 @@ async function issueOf(page) {
 
 if (problems.length) { problems.forEach(p => console.log('PROBLEM ' + p)); process.exit(1); }
 console.log(`The demo works in ${browserName} at ${SIZES.length} sizes in light and dark mode${shots ? `; screenshots in ${shots}` : ''}.`);
+
+// TEMPORARY DEBUG (#20): how soon different canvas streams give a frame in a video here, and what colour it is
+async function probes(){
+  const out = [], wait = ms => new Promise(ok => setTimeout(ok, ms));
+  const variants = {
+    'detached fps20': { attach: false, fps: 20 },
+    'attached fps20': { attach: true, fps: 20 },
+    'detached nofps': { attach: false },
+    'detached fps0+requestFrame': { attach: false, fps: 0 },
+    'detached fps20 rAF-paint': { attach: false, fps: 20, raf: true },
+  };
+  for (const [name, o] of Object.entries(variants)){
+    const c = document.createElement('canvas'); c.width = 1280; c.height = 800;
+    c.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;opacity:0';
+    if (o.attach) document.body.appendChild(c);
+    const x = c.getContext('2d');
+    const s = o.fps === undefined ? c.captureStream() : c.captureStream(o.fps), tr = s.getVideoTracks()[0];
+    let on = true;
+    const paint = () => { x.fillStyle = '#12ab34'; x.fillRect(0, 0, c.width, c.height); if (tr.requestFrame) tr.requestFrame(); };
+    paint();
+    if (o.raf) { const f = () => { if (on) { paint(); requestAnimationFrame(f); } }; requestAnimationFrame(f); }
+    const iv = setInterval(paint, 50);
+    const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.autoplay = true;
+    v.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;opacity:0';
+    v.srcObject = s; document.documentElement.appendChild(v);
+    const t0 = performance.now(); v.play().catch(() => {});
+    let t = 0; while (t < 100 && (v.readyState < 2 || !v.videoWidth)) { await wait(40); t++; }
+    const firstMs = Math.round(performance.now() - t0);
+    const col = () => { const k = document.createElement('canvas'); k.width = 8; k.height = 8; const g = k.getContext('2d'); g.drawImage(v, 0, 0, 8, 8); return [...g.getImageData(4, 4, 1, 1).data].join(','); };
+    const c1 = v.videoWidth ? col() : '-';
+    await wait(500);
+    const c2 = v.videoWidth ? col() : '-';
+    out.push(`${name}: frame after ${firstMs}ms rs=${v.readyState} vw=${v.videoWidth} muted=${tr.muted} colour then=${c1} +500ms=${c2}`);
+    on = false; clearInterval(iv); tr.stop(); v.srcObject = null; v.remove(); c.remove();
+  }
+  return out;
+}
