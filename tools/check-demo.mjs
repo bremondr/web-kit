@@ -569,41 +569,31 @@ async function issueOf(page) {
 if (problems.length) { problems.forEach(p => console.log('PROBLEM ' + p)); process.exit(1); }
 console.log(`The demo works in ${browserName} at ${SIZES.length} sizes in light and dark mode${shots ? `; screenshots in ${shots}` : ''}.`);
 
-// TEMPORARY DEBUG (#20): how often different canvas streams give no frame in a video within 3 s, tried in turn
+// TEMPORARY DEBUG (#20): the kit's own screenPicture() many times, with the fake as it is on main (A) and with
+// captureStream() without a frame rate (C), alternating; counts captures that fail or don't come out green
 async function probes(){
-  const wait = ms => new Promise(ok => setTimeout(ok, ms));
-  const variants = {
-    'A detached fps20 interval50 (as now)': { fps: 20, every: 50 },
-    'B detached fps20 interval37': { fps: 20, every: 37 },
-    'C detached nofps interval50': { every: 50 },
-    'D attached fps20 interval50': { fps: 20, every: 50, attach: true },
-    'E detached fps20 rAF only': { fps: 20, raf: true },
-    'F detached fps0 requestFrame interval50': { fps: 0, every: 50 },
-  };
-  const names = Object.keys(variants), res = {};
-  for (let round = 0; round < 8; round++) for (let k = 0; k < names.length; k++){
-    const name = names[(k + round) % names.length], o = variants[name];
+  const { screenPicture } = await import('../feedback-kit/page.js');
+  const md = navigator.mediaDevices, had = md.getDisplayMedia, timers = [];
+  const put = f => { if (typeof MediaDevices === 'function') Object.defineProperty(MediaDevices.prototype, 'getDisplayMedia', { value: f, configurable: true, writable: true }); Object.defineProperty(md, 'getDisplayMedia', { value: f, configurable: true, writable: true }); };
+  const fake = fps => async () => {
     const c = document.createElement('canvas'); c.width = 1280; c.height = 800;
-    c.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;opacity:0';
-    if (o.attach) document.body.appendChild(c);
-    const x = c.getContext('2d');
-    const s = o.fps === undefined ? c.captureStream() : c.captureStream(o.fps), tr = s.getVideoTracks()[0];
-    let on = true;
-    const paint = () => { x.fillStyle = '#12ab34'; x.fillRect(0, 0, c.width, c.height); if (o.fps === 0) tr.requestFrame(); };
-    paint();
-    if (o.raf) { const f = () => { if (on) { paint(); requestAnimationFrame(f); } }; requestAnimationFrame(f); }
-    const iv = o.every && setInterval(paint, o.every);
-    const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.autoplay = true;
-    v.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;opacity:0';
-    v.srcObject = s; document.documentElement.appendChild(v);
-    const t0 = performance.now(); v.play().catch(() => {});
-    while (performance.now() - t0 < 3000 && (v.readyState < 2 || !v.videoWidth)) await wait(20);
-    const ms = Math.round(performance.now() - t0), ok = v.videoWidth > 0;
-    let col = '-';
-    if (ok){ const k2 = document.createElement('canvas'); k2.width = 8; k2.height = 8; const g = k2.getContext('2d'); g.drawImage(v, 0, 0, 8, 8); col = [...g.getImageData(4, 4, 1, 1).data].slice(0, 3).join(','); }
-    const r = res[name] = res[name] || { tries: 0, noFrame: 0, notGreen: 0, slowest: 0 };
-    r.tries++; if (!ok) r.noFrame++; else { r.slowest = Math.max(r.slowest, ms); if (col !== '18,171,52') r.notGreen++; }
-    on = false; if (iv) clearInterval(iv); tr.stop(); v.srcObject = null; v.remove(); c.remove();
+    const x = c.getContext('2d'), paint = () => { x.fillStyle = '#12ab34'; x.fillRect(0, 0, c.width, c.height); };
+    paint(); timers.push(setInterval(paint, 50));
+    return fps === undefined ? c.captureStream() : c.captureStream(fps);
+  };
+  const res = { 'A captureStream(20) (main)': { tries: 0, failed: 0, notGreen: 0 }, 'C captureStream() (fix)': { tries: 0, failed: 0, notGreen: 0 } };
+  const names = Object.keys(res);
+  for (let k = 0; k < 50; k++){
+    const name = names[k % 2], r = res[name];
+    put(fake(name.startsWith('A') ? 20 : undefined));
+    r.tries++;
+    try {
+      const cv = await screenPicture();
+      const d = cv.getContext('2d').getImageData(cv.width >> 1, cv.height >> 1, 1, 1).data;
+      if (Math.abs(d[0] - 18) > 8 || Math.abs(d[1] - 171) > 8 || Math.abs(d[2] - 52) > 8) r.notGreen++;
+    } catch { r.failed++; }
+    timers.splice(0).forEach(clearInterval);
   }
-  return names.map(n => `PROBE ${n}: ${JSON.stringify(res[n])}`);
+  put(had);
+  return names.map(n => `KIT ${n}: ${JSON.stringify(res[n])}`);
 }
