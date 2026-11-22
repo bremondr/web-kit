@@ -4,7 +4,7 @@ This takes a project from nothing to automatic updates: it keeps a plain copy of
 
 **What you need:** the project on GitHub; Node 18 or newer and git on your computer; the [GitHub CLI](https://cli.github.com/) (`gh`), signed in. The commands work in PowerShell and in a Unix shell unless a step shows both.
 
-**To have Claude Code do it:** open a session in the project and paste the prompt at the end of this page. The steps that need your GitHub account (the token and secret, the setting) stay with you; Claude lists them for you.
+**To have Claude Code do it:** open a session in the project and paste the prompt at the end of this page. The steps that need your GitHub account (the label, the token and secret, the setting) stay with you; Claude lists them for you.
 
 ## 1. Copy the update script and the workflow
 
@@ -124,6 +124,43 @@ node tools/update-vendor.mjs feedback-kit@1.2.0    # a given version, also an ol
 node tools/update-vendor.mjs --verify              # are the copies exactly their releases?
 ```
 
+## Taking a new major version
+
+A new major version (2.0.0 after 1.x) means the project has to change something, so the daily workflow doesn't take it: its log only says the version exists. The release notes, from the module's changelog, end with "What to change in a project". To have Claude Code do it, open a session in the project and paste this, with the module and version filled in:
+
+```text
+Update <module> in this project to <version> from bremondr/web-kit. It's a major version, so it needs changes
+here as well as the new copy.
+
+Read first:
+- the release notes, especially "What to change in a project":
+  https://github.com/bremondr/web-kit/releases/tag/<module>-v<version>
+- the module's README at that version:
+  https://github.com/bremondr/web-kit/blob/<module>-v<version>/<module>/README.md
+- the module's demo page at that version, a short, complete example of the new interface:
+  https://github.com/bremondr/web-kit/blob/<module>-v<version>/demo/<module>.js
+  (live, showing main, at https://bremondr.github.io/web-kit/demo/)
+
+If the project doesn't use the module yet (it isn't in vendor.json), stop and tell me: that is a setup, not an
+update (see the prompt at the end of web-kit's docs/setup-project.md).
+
+Then:
+1. Run node tools/update-vendor.mjs <module>@<version>, then node tools/update-vendor.mjs --verify. Don't edit the
+   vendored copy.
+2. Make every change "What to change in a project" lists, in the project's own files outside the vendored folder:
+   new files in the service worker's list, new or renamed options, anything removed. Where it asks for a choice,
+   say what you chose and why.
+3. Update anything in README.md or CLAUDE.md that the new version makes wrong.
+4. Run the project's checks. Then try it in a browser at iPad (1180 × 820, 820 × 1180), phone (390 × 844) and
+   desktop (1440 × 900) sizes, in light and dark mode, on each kind of page the app has, and show me screenshots.
+5. Open a pull request that lists what changed and anything that looked wrong.
+
+If something needs a change in the module, don't work around it here: describe it for an issue in
+bremondr/web-kit and tell me.
+```
+
+For feedback-kit 2.0.0 (whole-page picture, own screenshot, screen capture), "What to change" covers: `page.js` in the service worker's list, `page: {fonts}` and `area`, a `pictureLabel` for the app's own `picture` (or removing it), and `data-fk-skip`.
+
 ## When web-kit's consumer files change
 
 `consumer/update-vendor.mjs` and `update-vendor.yml` change rarely. When they do, [`consumer/CHANGELOG.md`](../consumer/CHANGELOG.md) says what changed and whether projects should copy them again (step 1).
@@ -135,24 +172,48 @@ node tools/update-vendor.mjs --verify              # are the copies exactly thei
 | The update run fails at "Open or update the pull request" with "GitHub Actions is not permitted to create or approve pull requests" | No `VENDOR_PR_TOKEN`, and the setting is off. Add the token (step 6). |
 | The update run fails at checkout, or with 401/403 when pushing | The token expired or lacks a permission. Make a new one (step 6) and set the secret again. |
 | An update pull request has no checks or preview | It was opened with the workflow's own token. Close and reopen it, and add `VENDOR_PR_TOKEN`. |
-| "feedback-kit: 2.0.0 is a new major version" in the log, and no pull request | New major versions aren't taken by themselves. Read the module's changelog, then run `node tools/update-vendor.mjs --major` and adapt the project. |
+| "feedback-kit: 2.0.0 is a new major version" in the log, and no pull request | New major versions aren't taken by themselves. See [Taking a new major version](#taking-a-new-major-version). |
 | `--verify` says a file differs | Someone edited the copy. Move the change into web-kit (or drop it), then run `node tools/update-vendor.mjs <module>@<version>` to restore the copy. |
 | "No vendor.json here" | Run the script from the project's root. |
 
 ## A prompt for Claude Code
 
-Paste this into a Claude Code session opened in the project, with the module(s) you want:
+Paste this into a Claude Code session opened in the project. It is written for feedback-kit; for another module, change the name and the module-specific lines (marked "feedback-kit:").
 
 ```text
-Set this project up to use modules from bremondr/web-kit, following
-https://github.com/bremondr/web-kit/blob/main/docs/setup-project.md. Start with feedback-kit at its newest release.
-- Read web-kit's README, docs/setup-project.md and the module's README first.
-- Do steps 1 to 5: copy consumer/update-vendor.mjs to tools/ and consumer/update-vendor.yml to .github/workflows/,
-  write vendor.json, take the module with node tools/update-vendor.mjs, wire it in as its README says (project-
-  specific code stays outside the vendored folder), add its files to the service worker's list if there is one,
-  and add the note to README and CLAUDE.md.
-- Run the project's checks, then open a pull request.
-- Don't edit the vendored copy. If the module needs a change, tell me rather than changing it here.
-- For steps 6 to 8 (the VENDOR_PR_TOKEN token and secret, consumers.json in web-kit, trying the workflow after
-  the merge), give me the exact commands and settings to do myself.
+Set this project up to use feedback-kit from bremondr/web-kit, at its newest release
+(https://github.com/bremondr/web-kit/releases), following
+https://github.com/bremondr/web-kit/blob/main/docs/setup-project.md.
+
+Read first: web-kit's README.md, docs/setup-project.md, and the module's README (feedback-kit:
+feedback-kit/README.md, "Using it", "The pictures" and "Setting it up in a project"). Each module has a demo page
+that is a short, complete example of using it (feedback-kit: demo/feedback-kit.js and demo/feedback-kit.html in
+web-kit, live at https://bremondr.github.io/web-kit/demo/feedback-kit.html).
+
+Do steps 1 to 5 of the setup guide:
+- copy consumer/update-vendor.mjs to tools/ and consumer/update-vendor.yml to .github/workflows/;
+- write vendor.json, with "dir" inside what the site publishes, next to the project's own scripts;
+- take the module with: node tools/update-vendor.mjs <module>@<newest version>, then check it with
+  node tools/update-vendor.mjs --verify;
+- wire it in as its README says, with the project's own code outside the vendored folder. feedback-kit: link its
+  CSS and set the --fk-* colours and fonts to the project's own. Write one feedback file of the project's own, with
+  repo and labels, page: {fonts} with the web fonts the page uses (and area, if the whole scrollable page is more
+  useful than what is on screen), and describe with what is on screen. Add a "Reopen" section with a link back to
+  this view (with a fallback) if the app can make one. If one part of the app is what people will point at (a
+  chart, a field), add it as picture with a pictureLabel. Give data-fk-skip to anything that shouldn't be in the
+  picture. Add a "Send feedback" button that calls feedback.open() from the tap;
+- add all of the module's files to the service worker's list, if there is one;
+- add the note about vendored copies to README.md and CLAUDE.md (feedback-kit: and the "Working from the issues"
+  note to CLAUDE.md).
+
+Then run the project's checks. Try it in a browser at iPad (1180 × 820, 820 × 1180), phone (390 × 844) and
+desktop (1440 × 900) sizes, in light and dark mode, show me screenshots, and open a pull request.
+
+Don't edit the vendored copy. If the module needs a change, tell me instead of working around it here.
+
+At the end, give me the exact commands and settings for what I do myself:
+- feedback-kit: the label its issues get (gh label create);
+- the VENDOR_PR_TOKEN token and secret (step 6);
+- the line for consumers.json in web-kit (step 7);
+- trying the update workflow after the merge (step 8).
 ```
