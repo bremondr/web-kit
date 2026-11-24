@@ -8,8 +8,8 @@
    Texts with {name} in them are templates: the kit puts the value in, wherever the language wants it. Every
    language has every key (issue.test.mjs checks it), with the same {names} as English.
 
-   provider.github, provider.gitlab: the provider's name as it goes into openIssue and issueNote. In Czech it is
-   "na GitHubu", so the name is in the form that "na" needs. */
+   provider.github, provider.gitlab: the provider's name as it goes into openIssue and issueNote, for a language
+   whose grammar changes the name (in Czech it is the plain name: "Napsat hlášení na GitHub", "GitHub otevře"). */
 
 export const STRINGS = {
   en: {
@@ -76,16 +76,16 @@ export const STRINGS = {
   },
   cs: {
     heading: 'Poslat zpětnou vazbu',
-    pictureLabel: 'Jen tato část',
+    pictureLabel: 'Jen tuto část',
     close: 'Zavřít',
-    canvasLabel: 'Obrázek obrazovky. Kreslením do něj ukažte, kde je problém.',
-    making: 'Připravuji obrázek…',
-    pickLabel: 'Obrázek',
+    canvasLabel: 'Snímek obrazovky. Kreslením do něj ukažte, kde je problém.',
+    making: 'Připravuji snímek obrazovky…',
+    pickLabel: 'Snímek obrazovky',
     kindPage: 'Celá stránka',
-    kindOwn: 'Váš snímek',
+    kindOwn: 'Váš snímek obrazovky',
     kindScreen: 'Snímek obrazovky',
     grab: 'Pořídit skutečný snímek obrazovky',
-    mine: 'Použít vlastní snímek…',
+    mine: 'Použít vlastní snímek obrazovky…',
     mineNote: 'Snímek obrazovky můžete také vložit (Ctrl+V, ⌘V) nebo přetáhnout na obrázek.',
     pensLabel: 'Barva pera',
     penRed: 'Červená',
@@ -97,22 +97,22 @@ export const STRINGS = {
     clear: 'Vymazat',
     drawNote: 'Kreslením do obrázku ukažte, kde je problém.',
     openIssue: 'Napsat hlášení na {provider}',
-    'provider.github': 'GitHubu',
-    'provider.gitlab': 'GitLabu',
-    copy: 'Kopírovat obrázek',
+    'provider.github': 'GitHub',
+    'provider.gitlab': 'GitLab',
+    copy: 'Kopírovat screenshot',
     share: 'Sdílet…',
-    save: 'Uložit obrázek',
-    issueNote: 'Na {provider} se otevře nové hlášení s vyplněným tím, co bylo na obrazovce. Přihlaste se, vložte obrázek, napište, co je špatně, a hlášení odešlete.',
+    save: 'Uložit snímek obrazovky',
+    issueNote: '{provider} otevře nové předvyplněné hlášení. Přihlaste se, vložte obrázek, napište, co je špatně, a hlášení odešlete.',
     fileName: 'zpetna-vazba.png',
-    copied: 'Obrázek je zkopírovaný. Vložte ho do hlášení, nebo do něj nejdřív nakreslete.',
-    copiedDrawing: 'Obrázek je zkopírovaný i s vaší kresbou. Vložte ho do hlášení.',
-    notCopied: 'Obrázek se tu nepodařilo zkopírovat. Uložte ho nebo ho sdílejte a pak ho přiložte k hlášení.',
-    drawThen: 'Nakreslete do obrázku, kde je problém, a pak ho pro hlášení zkopírujte, uložte nebo sdílejte.',
-    ownIn: 'Váš snímek je tu. Nakreslete do něj, kde je problém, a pak ho pro hlášení zkopírujte, uložte nebo sdílejte.',
+    copied: 'Snímek obrazovky je zkopírovaný. Vložte ho do hlášení, nebo do něj nejdřív nakreslete, co je špatně.',
+    copiedDrawing: 'Snímek obrazovky je zkopírovaný i s vaší kresbou. Vložte ho do hlášení.',
+    notCopied: 'Snímek obrazovky se nepodařilo zkopírovat. Uložte ho nebo ho sdílejte a pak ho přiložte k hlášení.',
+    drawThen: 'Nakreslete do snímku obrazovky, kde je problém, a pak ho pro hlášení zkopírujte, uložte nebo sdílejte.',
+    ownIn: 'Váš snímek obrazovky je tu. Nakreslete do něj, kde je problém, a pak ho pro hlášení zkopírujte, uložte nebo sdílejte.',
     notPicture: 'To není obrázek. Přetáhněte sem snímek obrazovky (PNG nebo JPEG).',
-    unreadable: 'Ten obrázek se nepodařilo načíst. Zkuste snímek obrazovky ve formátu PNG nebo JPEG.',
-    noPicture: 'V tomto prohlížeči obrázek vytvořit nejde.',
-    noPictureNote: 'Obrázek se tu nepodařilo vytvořit. Hlášení i tak uvede, co bylo na obrazovce.',
+    unreadable: 'Obrázek se nepodařilo načíst. Zkuste snímek obrazovky ve formátu PNG nebo JPEG.',
+    noPicture: 'V tomto prohlížeči snímek obrazovky vytvořit nejde.',
+    noPictureNote: 'Snímek obrazovky se tu nepodařilo vytvořit. Hlášení i tak uvede, co bylo na obrazovce.',
     noCapture: 'Snímek obrazovky se nepořídil, takže obrázek je vytvořený ze stránky. Můžete použít i vlastní snímek.',
     tooLong: 'Část toho, co bylo na obrazovce, se do hlášení nevešla.',
     issueWhat: 'Co je špatně a co by se mělo stát',

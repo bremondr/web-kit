@@ -105,9 +105,9 @@ test('Czech: the issue has no English left, apart from the browser’s user agen
 
 test('Czech: the provider in the right form, and the pen names', () => {
   const cs = texts('cs');
-  assert.equal(format(cs.openIssue, {provider: cs['provider.github']}), 'Napsat hlášení na GitHubu');
-  assert.equal(format(cs.openIssue, {provider: cs['provider.gitlab']}), 'Napsat hlášení na GitLabu');
-  assert.ok(format(cs.issueNote, {provider: cs['provider.gitlab']}).startsWith('Na GitLabu se otevře nové hlášení '));
+  assert.equal(format(cs.openIssue, {provider: cs['provider.github']}), 'Napsat hlášení na GitHub');
+  assert.equal(format(cs.openIssue, {provider: cs['provider.gitlab']}), 'Napsat hlášení na GitLab');
+  assert.ok(format(cs.issueNote, {provider: cs['provider.gitlab']}).startsWith('GitLab otevře nové předvyplněné hlášení. '));
   assert.equal(format(cs.penLabel, {pen: cs.penRed}), 'Červená barva pera');
 });
 

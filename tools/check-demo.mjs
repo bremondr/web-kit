@@ -435,7 +435,7 @@ async function checkFeedback(page, where, scheme, size) {
   await page.waitForFunction(() => document.querySelector('.fk:not([hidden]) .fk-primary')?.href, null, { timeout: 5000 }).catch(() => {});
   if (await open.getAttribute('lang') !== 'cs') fail(where, 'Czech: the panel has no lang="cs"');
   const csButton = await open.locator('.fk-primary').textContent();
-  if (csButton !== 'Napsat hlášení na GitHubu') fail(where, `Czech: the button says "${csButton}"`);
+  if (csButton !== 'Napsat hlášení na GitHub') fail(where, `Czech: the button says "${csButton}"`);
   const csPanel = await panelTexts(page);
   for (const text of englishIn(csPanel)) fail(where, `Czech: the panel has English in it: "${text}"`);
   const cut = await page.evaluate(() => {
