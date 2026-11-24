@@ -171,7 +171,7 @@ part), close to what was on screen but not an exact screenshot.
 
 ## Limits
 
-- **A copy, not a screenshot.** A page can't take a screenshot of itself on iPad Safari, so the whole page is redrawn from its elements and styles. It is close, but not exact: images, backgrounds and fonts from other sites appear only if their server allows CORS; iframes, video and plugins come out as empty boxes; the browser's own parts (scrollbars, the address bar) aren't in it; and a rare CSS effect can look slightly different, mostly in Safari.
+- **A copy, not a screenshot.** A page can't take a screenshot of itself on iPad Safari, so the whole page is redrawn from its elements and styles. It is close, but not exact: images, backgrounds and fonts from other sites appear only if their server allows CORS; iframes, video and plugins come out as empty boxes; the browser's own parts (the address bar, and scrollbars except classic ones the screen shows, as on Windows) aren't in it; and a rare CSS effect can look slightly different, mostly in Safari.
 - **Screen capture** is only on desktop browsers, and the browser asks every time. It isn't copied at once (it comes after the prompt, not in the tap): the person copies it after a stroke or with Copy picture.
 - **Clipboard.** Safari allows writing to the clipboard only during a tap, so the kit copies when the panel opens and after each stroke. Where copying is refused, Save and Share still work.
 - **Sign-in.** The person needs an account on GitHub, or on the GitLab server. Labels are applied only if they may label issues in the repository (on GitLab, members with the Planner role or higher can); the owner always can.
