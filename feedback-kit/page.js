@@ -277,9 +277,15 @@ export async function screenPicture({maxSize = 2400} = {}){
     document.documentElement.appendChild(video);
     await Promise.race([video.play().catch(() => {}), wait(1500)]);
     // a moment on, so the first frame isn't empty and the browser's "sharing" notice has settled; then wait for a
-    // frame with a size (at most two seconds)
+    // frame with a size (at most two seconds). WebKit's video sometimes never shows a live stream it was given,
+    // though the stream keeps sending frames; given the stream again, it shows it at once. So after half a second
+    // with no frame, and again after a second and a half, the video gets the stream again
     await wait(250);
-    for (let t = 0; t < 40 && (video.readyState < 2 || !video.videoWidth); t++) await wait(50);
+    const noFrame = () => video.readyState < 2 || !video.videoWidth;
+    for (let t = 0; t < 40 && noFrame(); t++){
+      if (t === 10 || t === 30){ video.srcObject = null; video.srcObject = stream; video.play().catch(() => {}); }
+      await wait(50);
+    }
     const w = video.videoWidth, h = video.videoHeight;
     if (!w || !h) throw new Error('The screen capture gave no picture.');
     const scale = Math.min(1, maxSize / Math.max(w, h));

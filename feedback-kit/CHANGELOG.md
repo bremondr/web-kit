@@ -2,6 +2,12 @@
 
 Each version is released as the tag `feedback-kit-vX.Y.Z`. A new major version (the first number) means a project using the kit may need changes; the notes say which.
 
+## 2.1.2 (2026-11-24)
+
+- **A screen capture no longer fails now and then in WebKit.** `screenPicture()` plays the capture in a hidden video. WebKit's video sometimes never shows a live stream it was given, though the stream keeps sending frames, so after about four seconds the panel fell back to the page's picture. Now, when the video has no frame after half a second (and again after a second and a half), it is given the stream again, which makes it show at once. Other browsers never get there.
+
+Nothing to change in a project.
+
 ## 2.1.1 (2026-11-24)
 
 - **The picture fits the panel on upright screens** (iPad portrait, phones): a tall picture is scaled down to fit the picture area instead of being cut off at the bottom. Drawing still lands under the finger (#13).
