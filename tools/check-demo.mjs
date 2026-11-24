@@ -364,14 +364,25 @@ async function checkFeedback(page, where, scheme, size) {
   const tall = await page.evaluate(() => { const c = document.querySelector('.fk-canvas'), d = document.documentElement; return [c.height / c.width, d.scrollHeight / d.clientWidth]; });
   if (Math.abs(tall[0] - tall[1]) > 0.02) fail(where, `the whole page's picture is ${tall[0].toFixed(2)} high for 1 wide, the page ${tall[1].toFixed(2)}`);
   await fits('the whole scrollable page');
-  // a tap on this tall, scaled-down picture draws a dot right under it
+  // a tap on this tall, scaled-down picture draws a dot right under it: within a screen pixel, because touch
+  // points can be rounded to whole pixels (WebKit), and the dot is smaller than that here
   {
-    const b = await page.locator('.fk-canvas').boundingBox(), spot = [0.55, 0.35];
-    const at = [b.x + b.width * spot[0], b.y + b.height * spot[1]];
+    const b = await page.locator('.fk-canvas').boundingBox();
+    const at = [Math.round(b.x + b.width * 0.55), Math.round(b.y + b.height * 0.35)];
     if (await page.evaluate(() => matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0)) await page.touchscreen.tap(...at);
     else await page.mouse.click(...at);
-    const dot = await pixel(spot);
-    if (!near(dot, hex('#ff2d55'), 40)) fail(where, `a tap on the whole scrollable page's picture did not draw under it (rgb(${dot}) there)`);
+    const dot = await page.evaluate(([x, y, pen]) => {
+      const c = document.querySelector('.fk:not([hidden]) .fk-canvas'), r = c.getBoundingClientRect(), k = c.width / r.width;
+      const cx = (x - r.left) * k, cy = (y - r.top) * k, d = Math.ceil(k);
+      const px = c.getContext('2d').getImageData(Math.round(cx - d), Math.round(cy - d), 2 * d + 1, 2 * d + 1).data;
+      let best = null, off = Infinity;
+      for (let i = 0; i < px.length; i += 4){
+        const o = Math.max(...[0, 1, 2].map(j => Math.abs(px[i + j] - pen[j])));
+        if (o < off){ off = o; best = [px[i], px[i + 1], px[i + 2]]; }
+      }
+      return best;
+    }, [...at, hex('#ff2d55')]);
+    if (!near(dot, hex('#ff2d55'), 40)) fail(where, `a tap on the whole scrollable page's picture did not draw under it (at best rgb(${dot}) there)`);
   }
   await page.click('.fk-x');
   await page.uncheck('#full-page');
