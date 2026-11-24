@@ -108,7 +108,7 @@ All of it is optional; the comment at the top of `tools/build-site.mjs` has ever
 | `checks` | commands that must pass on `main` before anything is published | `["node --test"]` |
 | `maxPreviews` | the newest this many previews are published | `20` |
 | `feedback` | `{"labels": [...], "event": "..."}`: a Feedback link on the badge; it first sends the page a cancelable event, so the app's own feedback panel can open instead | none |
-| `global` | another name for `window.SITE_PREVIEW`, the preview's description | none |
+| `global` | another name for `window.SITE_PREVIEW`, the preview's description; needed when the project's code reads it (its `storagePrefix`, for example) under a name of its own | none |
 | `commentMarker`, `commentNote` | the bot comment's hidden marker and its text | `<!-- site-preview -->` |
 
 The workflow and the build always run as they are on `main`: a change to `site.json` shows in previews only once it is merged.
