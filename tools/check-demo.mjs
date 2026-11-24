@@ -9,7 +9,8 @@
    tap and leaves the panel out, the whole scrollable page can be pictured, and the issue link is filled in (also with the Reopen link too long, so the fallback is used and the panel's note names the Reopen section, in English and Czech).
    With GitLab chosen, the link goes to the example GitLab server, with the label as a /label line and GitLab named in the panel.
    The panel's texts are English by default; with Czech chosen, no English is left in the panel or the issue (but the
-   browser's user agent), and no text in the panel is cut off or wider than its place.
+   browser's user agent), no text in the panel is cut off or wider than its place, and Czech letters (Ě) are drawn in
+   the web font, in the panel's heading and in the picture.
    On the git-store-kit page (against its fake GitHub): the public repo loads without a token and the private one
    asks for one; a token pasted in the panel opens it; publishing sends one commit; a change made elsewhere brings up
    the conflict question, and each answer works; an item's history lists its versions and opens and restores one;
@@ -451,6 +452,7 @@ async function checkFeedback(page, where, scheme, size) {
     });
   });
   for (const c of cut) fail(where, `Czech: ${c}`);
+  for (const problem of await czechFont(page)) fail(where, `Czech: ${problem}`);
   const csIssue = await issueOf(page);
   if (!csIssue) fail(where, 'Czech: the issue link was not filled in');
   else {
@@ -477,6 +479,47 @@ async function checkFeedback(page, where, scheme, size) {
   await open.locator('.fk-x').click();
   await page.uncheck('#long-link');
   await page.check('input[name=language][value=en]');
+}
+
+// Czech letters in the web font, on the page and in the picture (#47): the panel heading is in Bungee, Bungee has a
+// glyph for Ě (drawn with two different fallbacks behind it, the two come out the same only when Bungee draws it), the
+// font CSS inlined for the picture has a rule covering U+011A, and an SVG picture of Ě drawn with that CSS uses it too
+async function czechFont(page) {
+  return page.evaluate(async () => {
+    const out = [], heading = document.querySelector('.fk:not([hidden]) h2');
+    if (!/^\s*['"]?Bungee/.test(getComputedStyle(heading).fontFamily)) out.push(`the heading's font is ${getComputedStyle(heading).fontFamily}`);
+    await document.fonts.load('24px Bungee', 'Ě');
+    await document.fonts.ready;
+    if (!document.fonts.check('24px Bungee', 'Ě')) out.push('the Bungee face for Ě is not loaded');
+    const pixels = canvas => canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data.join();
+    const glyph = family => {
+      const c = Object.assign(document.createElement('canvas'), {width: 80, height: 90}), ctx = c.getContext('2d');
+      ctx.font = `64px ${family}`; ctx.fillText('Ě', 4, 76);
+      return pixels(c);
+    };
+    if (glyph('monospace') === glyph('serif')) out.push('can\'t tell fonts apart on a canvas');
+    else if (glyph('Bungee, monospace') !== glyph('Bungee, serif')) out.push('the page draws Ě in a fallback font, not in Bungee');
+
+    const { embedFonts, svgPicture } = await import('../feedback-kit/picture.js');   // the same module, so the same inlined CSS
+    const css = await embedFonts({stylesheet: new URL('fonts/bungee.css', location.href).href, family: 'Bungee'});
+    const covers = (rule, code) => {
+      const range = /unicode-range\s*:([^;}]*)/i.exec(rule);
+      return !range || range[1].split(',').some(r => {
+        const [a, b = a] = r.trim().replace(/^U\+/i, '').split('-').map(h => parseInt(h.replace(/\?/g, '0'), 16));
+        return code >= a && code <= b;
+      });
+    };
+    if (!(css.match(/@font-face\s*{[^}]*}/g) || []).some(rule => covers(rule, 0x11A) && rule.includes('data:'))) out.push('the font CSS for the picture has no rule for U+011A (Ě)');
+    const picture = async family => {
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('viewBox', '0 0 80 90'); svg.setAttribute('style', 'position:fixed;left:0;top:0;width:80px;height:90px');
+      svg.innerHTML = `<text x="4" y="76" style="font: 64px ${family}">Ě</text>`;
+      document.body.append(svg);
+      try { return pixels(await svgPicture(svg, {fonts: Promise.resolve(css), background: '#fff', maxSize: 90})); } finally { svg.remove(); }
+    };
+    if (await picture('Bungee, monospace') !== await picture('Bungee, serif')) out.push('the picture draws Ě in a fallback font, not in Bungee');
+    return out;
+  });
 }
 
 // every text in the open panel, shown or not (hidden buttons and messages too), with labels and titles
