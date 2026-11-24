@@ -233,7 +233,7 @@ python3 -m http.server 8000 --directory _site
 gh api repos/<owner>/<project>/pages -X PUT -f build_type=workflow
 ```
 
-**6. Merge, then check.** The workflow runs as it is on `main` (it uses `pull_request_target`, so a pull request's own files are never run), so the pull request that adds it gets no preview itself. After the merge, the push to `main` publishes the site; run it by hand with `gh workflow run pages.yml --repo <owner>/<project>` if it didn't. Open pull requests then get their comment, and every new one gets a preview.
+**6. Merge, then check.** The workflow runs as it is on `main` (it uses `pull_request_target`, so a pull request's own files are never run), so the pull request that adds it gets no preview itself. After the merge, the push to `main` publishes the site (a pull request closed by a merge gets no run of its own: the push run takes its preview down); run it by hand with `gh workflow run pages.yml --repo <owner>/<project>` if it didn't. Open pull requests then get their comment, and every new one gets a preview.
 
 Don't edit the copies; take new ones when [`consumer/CHANGELOG.md`](../consumer/CHANGELOG.md) says to.
 
@@ -248,6 +248,7 @@ The consumer files (`update-vendor.mjs` and `update-vendor.yml`, and for preview
 | The update run fails at "Open or update the pull request" with "GitHub Actions is not permitted to create or approve pull requests" | No `VENDOR_PR_TOKEN`, and the setting is off. Add the token (step 6). |
 | The update run fails at checkout, or with 401/403 when pushing | The token expired or lacks a permission. Make a new one (step 6) and set the secret again. |
 | An update pull request has no checks or preview | It was opened with the workflow's own token. Close and reopen it, and add `VENDOR_PR_TOKEN`. |
+| "Deploy site" fails at "Deploy to GitHub Pages" with "No artifacts named github-pages were found", or "Multiple artifacts" after a re-run | The project has a `pages.yml` from before 2026-11-24, which uploads and deploys in one job; copy it again (step 1 of Adding previews). Until then, run it by hand: `gh workflow run pages.yml --repo <owner>/<project>`. With the new copy, "Re-run failed jobs" works; "Re-run all jobs" uploads a second artifact. |
 | "feedback-kit: 2.0.0 is a new major version" in the log, and no pull request | New major versions aren't taken by themselves. See [Taking a new major version](#taking-a-new-major-version). |
 | `--verify` says a file differs | Someone edited the copy. Move the change into web-kit (or drop it), then run `node tools/update-vendor.mjs <module>@<version>` to restore the copy. |
 | "No vendor.json here" | Run the script from the project's root. |
