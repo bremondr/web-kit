@@ -16,7 +16,7 @@ Besides the modules, web-kit holds what every project needs around its app: [pul
   ```json
   {"source": "bremondr/web-kit", "dir": "js/vendor", "modules": {"feedback-kit": "1.0.0"}}
   ```
-- **A release is a tag** `<module>-v<major>.<minor>.<patch>`, with notes from the module's `CHANGELOG.md`.
+- **A release is a tag** `<module>-v<major>.<minor>.<patch>`, with notes from the module's `CHANGELOG.md`. Merging a pull request that dates the top section of a module's changelog (`## 1.2.0 (2026-12-01)`, not `(unreleased)`) releases it; see [maintaining](docs/maintaining.md#releasing-a-module).
 - **`tools/update-vendor.mjs`** in the project (a copy of [`consumer/update-vendor.mjs`](consumer/update-vendor.mjs)) replaces a copy with a newer release. It stays within the same major version unless asked.
 - **A daily workflow** in the project (a copy of [`consumer/update-vendor.yml`](consumer/update-vendor.yml)) runs it and opens a pull request when there's something new, with the changelog. The project's checks and previews run on that pull request, and nothing changes until someone merges it. With a token set up in web-kit, projects are told about a release at once instead of at their next daily check.
 
@@ -77,6 +77,6 @@ All three run on every pull request (`.github/workflows/test.yml`); the first tw
 | `index.html`, `.nojekyll` | for GitHub Pages: the root sends visitors to `demo/`, and files are served as they are |
 | `site.json` | what web-kit's own Pages site publishes (the demo and the modules) and the checks before it does |
 | `docs/` | the guides above |
-| `tools/check-modules.mjs`, `tools/check-demo.mjs`, `tools/release-notes.mjs` | the module check, the demo check, and the release notes from a changelog |
+| `tools/check-modules.mjs`, `tools/check-demo.mjs`, `tools/release-notes.mjs`, `tools/releases-due.mjs` | the module check, the demo check, the release notes from a changelog, and which releases a merge makes |
 | `tools/new-project.mjs` | makes a new project's folder from `template/` and `consumer/` |
-| `.github/workflows/` | `test.yml` (checks on pull requests), `release.yml` (a release from a tag), `pages.yml` (the demo and the previews, a copy of `consumer/pages.yml`) |
+| `.github/workflows/` | `test.yml` (checks on pull requests, and what merging would release), `release.yml` (releases: on a merge, what the changelogs date; or a tag pushed by hand), `pages.yml` (the demo and the previews, a copy of `consumer/pages.yml`) |

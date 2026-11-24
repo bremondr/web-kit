@@ -24,6 +24,11 @@ jobs:
       - name: Modules stand on their own
         run: node tools/check-modules.mjs
 
+      # what merging would release (the log says, per module); fails on a changelog heading the release run on main
+      # would fail on, so that is found before merging
+      - name: What merging releases
+        run: node tools/releases-due.mjs
+
   demo:
     runs-on: ubuntu-latest
     strategy:
