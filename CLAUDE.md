@@ -34,4 +34,9 @@ Add tests in `<module>/*.test.mjs` for logic that runs in plain Node. Code that 
 
 ## Releasing
 
-Only when the owner asks. Merge first, then tag `main` with `<module>-v<version>`. The changelog must already have a section for that version. See "Releasing a module" in `docs/maintaining.md`. A Claude Code cloud session can't push tags (its git proxy refuses them): give the owner the `gh api` command from `docs/maintaining.md` instead, with the tag filled in.
+A merge to `main` releases a module when its pull request dates the top section of the module's `CHANGELOG.md` (`## 1.2.0 (2026-12-01)`): `.github/workflows/release.yml` makes the tag `<module>-v<version>`, the GitHub Release and the notice to projects in the same run. A section headed `## 1.2.0 (unreleased)` isn't released. See "Releasing a module" in `docs/maintaining.md`.
+
+- Write `(unreleased)` unless the owner asked for the release; then write the date. A version built over several pull requests stays `(unreleased)` until the last one.
+- The top section of every module's changelog is always `## X.Y.Z (YYYY-MM-DD)` or `## X.Y.Z (unreleased)`, and a new version is higher than the module's newest release. Anything else makes the release run on `main` fail and release nothing. `node tools/releases-due.mjs` shows what merging the branch would release.
+- Say in the PR whether merging it releases, and which version: "Merging releases feedback-kit 2.2.0", or "Merging releases nothing (2.2.0 stays unreleased)".
+- Never move or delete a tag. A Claude Code cloud session can't push tags (its git proxy refuses them) and doesn't need to. If a release must be made by hand, give the owner the `gh api` command from `docs/maintaining.md` with the tag filled in.

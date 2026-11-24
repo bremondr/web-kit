@@ -1,25 +1,42 @@
-# A release of one module: a tag <module>-v<major>.<minor>.<patch> on main, for example
-#   git tag feedback-kit-v1.1.0 && git push origin feedback-kit-v1.1.0
-# or, without a local copy:
+# Releases of modules, each a tag <module>-v<major>.<minor>.<patch> with a GitHub Release.
+#
+# On every push to main (a merged pull request), tools/releases-due.mjs reads the top section of each module's
+# CHANGELOG.md. A section headed "## X.Y.Z (YYYY-MM-DD)" whose tag doesn't exist yet is released from that commit,
+# here in this run: the tag is made together with the GitHub Release. "## X.Y.Z (unreleased)" waits; a tag that exists
+# is never moved; a heading that can't be released (malformed, or a version not higher than the newest release) fails
+# the run and nothing is released. Several modules in one push each get their release.
+#
+# The manual fallback is still a tag pushed by a person, for example
 #   gh api repos/bremondr/web-kit/git/refs -f ref=refs/tags/feedback-kit-v1.1.0 -f sha=$(gh api repos/bremondr/web-kit/commits/main --jq .sha)
-# The tests run, the notes come from the module's CHANGELOG.md (the release stops if it has no section for that
-# version), and a GitHub Release is made. Projects that use the module (consumers.json) find it on their next daily
-# check; with a WEB_KIT_DISPATCH_TOKEN secret they are told at once (a fine-grained token with Contents read and
-# write on those projects: that is what starting a workflow there with a repository_dispatch event needs).
+# which releases that tag. If the release already exists (made by a push run, or on GitHub's website), it only gets
+# its notes again, so nothing is released twice. A tag or release made here with the run's own token doesn't start
+# another run.
+#
+# Either way the tests and the module check run first, the notes come from the module's CHANGELOG.md (the release
+# stops if it has no section for that version), and the projects that use the module (consumers.json) find it on
+# their next daily check; with a WEB_KIT_DISPATCH_TOKEN secret they are told at once (a fine-grained token with
+# Contents read and write on those projects: that is what starting a workflow there with a repository_dispatch event
+# needs).
 name: Release
 
 on:
   push:
+    branches: [main]
     tags: ['*-v[0-9]*']
 
 permissions:
   contents: write
 
+# one run at a time for main (two quick merges never race for a tag), and one per pushed tag; none is cancelled while
+# it runs (a newer push to main replaces one still waiting, and releases what it would have, from a newer commit)
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   release:
     runs-on: ubuntu-latest
     env:
-      TAG: ${{ github.ref_name }}
       DISPATCH_TOKEN: ${{ secrets.WEB_KIT_DISPATCH_TOKEN }}
     steps:
       - uses: actions/checkout@v7
@@ -28,33 +45,68 @@ jobs:
         with:
           node-version: 22
 
+      # a pushed tag: that tag; a push to main: what the changelogs say (tools/releases-due.mjs explains each module).
+      # The later steps read the list into an array first, so nothing they run can read it from standard input.
+      - name: What to release
+        id: due
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            echo "$GITHUB_REF_NAME" > "$RUNNER_TEMP/tags.txt"
+          else
+            node tools/releases-due.mjs > "$RUNNER_TEMP/tags.txt"
+          fi
+          if [ -s "$RUNNER_TEMP/tags.txt" ]; then
+            echo "Releasing:"; cat "$RUNNER_TEMP/tags.txt"
+            echo "any=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Unit tests
+        if: steps.due.outputs.any == 'true'
         run: node --test
 
       - name: Modules stand on their own
+        if: steps.due.outputs.any == 'true'
         run: node tools/check-modules.mjs
 
+      # every release's notes before anything is made, so a missing section stops them all
       - name: Release notes
-        run: node tools/release-notes.mjs "$TAG" > "$RUNNER_TEMP/notes.md"
+        if: steps.due.outputs.any == 'true'
+        run: |
+          mapfile -t tags < "$RUNNER_TEMP/tags.txt"
+          for tag in "${tags[@]}"; do
+            node tools/release-notes.mjs "$tag" > "$RUNNER_TEMP/notes-$tag.md"
+          done
 
-      # made here, or (if it was made on GitHub's website or with gh release create) given its notes
+      # made here (on a push to main, the tag is made with it, on this commit), or, if the release already exists,
+      # given its notes
       - name: GitHub Release
+        if: steps.due.outputs.any == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if gh release view "$TAG" > /dev/null 2>&1; then
-            gh release edit "$TAG" --notes-file "$RUNNER_TEMP/notes.md"
-          else
-            gh release create "$TAG" --title "$TAG" --notes-file "$RUNNER_TEMP/notes.md" --verify-tag
-          fi
+          mapfile -t tags < "$RUNNER_TEMP/tags.txt"
+          for tag in "${tags[@]}"; do
+            notes="$RUNNER_TEMP/notes-$tag.md"
+            if gh release view "$tag" > /dev/null 2>&1; then
+              echo "$tag: the release exists; giving it its notes"
+              gh release edit "$tag" --notes-file "$notes"
+            elif [ "$GITHUB_REF_TYPE" = tag ]; then
+              gh release create "$tag" --title "$tag" --notes-file "$notes" --verify-tag
+            else
+              gh release create "$tag" --title "$tag" --notes-file "$notes" --target "$GITHUB_SHA"
+            fi
+          done
 
       - name: Tell the projects that use it
-        if: env.DISPATCH_TOKEN != ''
+        if: steps.due.outputs.any == 'true' && env.DISPATCH_TOKEN != ''
         env:
           GH_TOKEN: ${{ secrets.WEB_KIT_DISPATCH_TOKEN }}
         run: |
-          module="${TAG%-v*}"
-          for repo in $(jq -r --arg m "$module" 'to_entries[] | select(.value | index($m)) | .key' consumers.json); do
-            echo "Telling $repo"
-            gh api "repos/$repo/dispatches" -f event_type=web-kit-released -f "client_payload[tag]=$TAG" || echo "::warning::Couldn't tell $repo"
+          mapfile -t tags < "$RUNNER_TEMP/tags.txt"
+          for tag in "${tags[@]}"; do
+            module="${tag%-v*}"
+            for repo in $(jq -r --arg m "$module" 'to_entries[] | select(.value | index($m)) | .key' consumers.json); do
+              echo "Telling $repo about $tag"
+              gh api "repos/$repo/dispatches" -f event_type=web-kit-released -f "client_payload[tag]=$tag" || echo "::warning::Couldn't tell $repo about $tag"
+            done
           done

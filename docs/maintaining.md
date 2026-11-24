@@ -5,12 +5,15 @@ How to release a module, tell projects about it, add a module, and change what p
 ## Releasing a module
 
 1. Make the change on a branch, with tests for logic that runs in Node (`<module>/*.test.mjs`). Try what runs in a browser on the module's demo page (`demo/<module>.html`, see [Trying modules in the demo](#trying-modules-in-the-demo)), and update the page if what the module shows or does changed.
-2. At the top of the module's `CHANGELOG.md`, add a section for the new version:
+2. At the top of the module's `CHANGELOG.md`, add a section for the new version. Its heading decides whether merging releases it:
    ```markdown
    ## 1.1.0 (2026-12-01)
 
    - What changed, in plain words.
    ```
+   - `## 1.1.0 (2026-12-01)`, with the date: **merging the pull request releases 1.1.0.**
+   - `## 1.1.0 (unreleased)`: merging releases nothing. Use it for a version built over several pull requests, or one you want to look at on `main` first; the pull request that replaces `unreleased` with the date releases it.
+
    Choose the version by what a project has to do:
    - **Patch** (1.0.0 → 1.0.1): a fix; nothing to do.
    - **Minor** (1.0.0 → 1.1.0): something new; nothing to do unless the project wants it.
@@ -19,28 +22,40 @@ How to release a module, tell projects about it, add a module, and change what p
    Projects take patch and minor versions by themselves, and major versions only when asked.
 3. Update the module's README if its interface changed, and the modules table in the main README if needed.
 4. Open a pull request. The tests and the module check run on it; merge when they pass.
-5. Tag the merged commit on `main`. From a clone:
-   ```sh
-   git switch main
-   git pull
-   git tag feedback-kit-v1.1.0
-   git push origin feedback-kit-v1.1.0
-   ```
-   Or without a clone, tagging the newest commit of `main`:
-   ```sh
-   gh api repos/bremondr/web-kit/git/refs -f ref=refs/tags/feedback-kit-v1.1.0 -f sha=$(gh api repos/bremondr/web-kit/commits/main --jq .sha)
-   ```
-   (`$( … )` works in PowerShell too.)
 
-The tag starts `.github/workflows/release.yml`. It:
+On every push to `main`, `.github/workflows/release.yml` runs `tools/releases-due.mjs`, which reads the top section of each module's changelog:
+
+| Top heading | Tag `<module>-vX.Y.Z` | What happens |
+|---|---|---|
+| `## X.Y.Z (YYYY-MM-DD)` | doesn't exist, and X.Y.Z is higher than the module's newest release | released from that commit |
+| `## X.Y.Z (YYYY-MM-DD)` | exists | nothing: it was released before, and a tag is never moved |
+| `## X.Y.Z (unreleased)` | | nothing yet (a warning on the run if X.Y.Z is already used or lower than the newest release) |
+| `## X.Y.Z (YYYY-MM-DD)` with X.Y.Z not higher than the newest release, a version without a date, a date that isn't one, no version, or no `## ` section | | **the run fails and releases nothing, for any module**; its log says which changelog and why |
+
+The same check runs on every pull request (step "What merging releases" in `test.yml`): its log says what merging would release, and it fails on a heading that would make the release run fail. `node tools/releases-due.mjs` does the same locally. A failed release run releases nothing, so fix the changelog with another pull request; merging it releases everything that is due. Several modules dated in one merge each get their release. Running the workflow again changes nothing that is already released. `consumer/` and `template/` aren't modules and aren't released.
+
+For each release, the run:
 - runs the tests and the module check;
 - takes the notes from the changelog, and stops if there is no section for that version;
-- creates the GitHub Release, or, if you already made one on GitHub's website, gives it those notes;
+- creates the GitHub Release and, with it, the tag on the merged commit;
 - tells the projects that use the module, when the notice token is set up (below).
 
-Projects then get an update pull request within a day, or within minutes with the notice.
+Projects then get an update pull request within a day, or within minutes with the notice. See it on the [Actions page](https://github.com/bremondr/web-kit/actions/workflows/release.yml) (the "What to release" step says what it decided for each module) and the [releases page](https://github.com/bremondr/web-kit/releases).
 
-**A Claude Code cloud session can't push tags**: its git proxy refuses them. Claude prepares everything and gives you the `gh api` command above; you run it.
+**Releasing by hand** (the fallback, for example when a push run failed after the merge, or to release from a commit the changelogs don't cover): push the tag yourself. From a clone:
+```sh
+git switch main
+git pull
+git tag feedback-kit-v1.1.0
+git push origin feedback-kit-v1.1.0
+```
+Or without a clone, tagging the newest commit of `main`:
+```sh
+gh api repos/bremondr/web-kit/git/refs -f ref=refs/tags/feedback-kit-v1.1.0 -f sha=$(gh api repos/bremondr/web-kit/commits/main --jq .sha)
+```
+(`$( … )` works in PowerShell too.) The pushed tag starts the same workflow for that tag: tests, notes, the release (or, if it already exists, just its notes again, so nothing is released twice) and the notice. The changelog must still have a section for that version.
+
+**A Claude Code cloud session can't push tags** (its git proxy refuses them), but it doesn't need to: it dates the changelog in its pull request, and merging releases. It writes `(unreleased)` unless you asked for the release, and says in the pull request whether merging releases.
 
 **A release that went wrong** (bad notes, broken code): don't move or delete the tag, since projects may already have it. Fix it on `main` and release the next patch version.
 
@@ -67,11 +82,11 @@ If a project can't be reached, the release still succeeds and the run shows a wa
 1. A new top-level folder, named for what it does (`share-kit`, `qr-kit`, …), with:
    - the code: plain ES modules and CSS, importing only from inside the folder;
    - `README.md`: what it does, how a project sets it up and uses it, and its limits (see `feedback-kit/README.md`);
-   - `CHANGELOG.md`, starting with the version you'll release first;
+   - `CHANGELOG.md`, starting with the version you'll release first (`## 1.0.0 (unreleased)` until it's ready: every module's top section must be dated or marked unreleased, or the release run on `main` fails);
    - tests (`*.test.mjs`) for logic that runs in Node.
 2. A demo page, `demo/<module>.html`, that imports the module from `../<module>/` and shows what it does with something worth looking at. Link it from `demo/index.html`, and add checks for it to `tools/check-demo.mjs`.
 3. Add a row to the modules table in the main README.
-4. Merge, then release (above). Then set up the projects that will use it ([setup-project.md](setup-project.md), steps 3 to 5 and 7).
+4. Merge; a dated first section releases it (above). Then set up the projects that will use it ([setup-project.md](setup-project.md), steps 3 to 5 and 7).
 
 `tools/check-modules.mjs` treats every top-level folder with JavaScript in it as a module, except `tools/`, `consumer/`, `demo/` and `template/`.
 
