@@ -99,7 +99,7 @@ export const STRINGS = {
     openIssue: 'Napsat hlášení na {provider}',
     'provider.github': 'GitHub',
     'provider.gitlab': 'GitLab',
-    copy: 'Kopírovat screenshot',
+    copy: 'Kopírovat snímek obrazovky',
     share: 'Sdílet…',
     save: 'Uložit snímek obrazovky',
     issueNote: '{provider} otevře nové předvyplněné hlášení. Přihlaste se, vložte obrázek, napište, co je špatně, a hlášení odešlete.',
