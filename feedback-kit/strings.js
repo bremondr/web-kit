@@ -54,7 +54,7 @@ export const STRINGS = {
     noPicture: 'No picture in this browser.',
     noPictureNote: 'Couldn’t make a picture here. The issue still says what was on screen.',
     noCapture: 'No screen capture, so the picture is the one made from the page. Your own screenshot works too.',
-    tooLong: 'Some of what was on screen was too long to put in the issue.',
+    tooLong: 'Too long to put in the issue: {sections}. It has a shorter note in its place, so add that part by hand if it matters.',
     // the issue
     issueWhat: 'What’s wrong, and what should happen',
     issuePicture: 'Picture',
@@ -114,7 +114,7 @@ export const STRINGS = {
     noPicture: 'V tomto prohlížeči snímek obrazovky vytvořit nejde.',
     noPictureNote: 'Snímek obrazovky se tu nepodařilo vytvořit. Hlášení i tak uvede, co bylo na obrazovce.',
     noCapture: 'Snímek obrazovky se nepořídil, takže obrázek je vytvořený ze stránky. Můžete použít i vlastní snímek.',
-    tooLong: 'Část toho, co bylo na obrazovce, se do hlášení nevešla.',
+    tooLong: 'Do hlášení se nevešlo: {sections}. Je v něm místo toho kratší poznámka, takže pokud na tom záleží, doplňte to ručně.',
     issueWhat: 'Co je špatně a co by se mělo stát',
     issuePicture: 'Obrázek',
     issuePictureHint: 'Obrázek je zkopírovaný: vložte ho sem, nebo přiložte uložený obrázek.',
@@ -153,4 +153,10 @@ export function texts(language = 'en', strings = null){
     if (typeof text !== 'string') throw new Error(`feedback-kit: strings.${key} must be text`);
   }
   return {...STRINGS.en, ...own, ...strings};
+}
+
+// names in a sentence, joined as the language joins them: 'A, B, and C' in English, 'A, B a C' in Czech
+export function listOf(items, language = 'en'){
+  try { return new Intl.ListFormat(language || 'en', {type: 'conjunction'}).format(items); }
+  catch { return items.join(', '); }
 }
