@@ -103,7 +103,7 @@ web-kit publishes itself with the same files projects copy for their previews (s
 - `site.json` says what differs for web-kit: the start page is `demo/index.html`, `consumer/`, `template/` and `consumers.json` aren't published (nor, as for every project, tools, docs, tests, Markdown and `.github/`), and `node --test` and `node tools/check-modules.mjs` must pass on `main` before anything is published. The demo check isn't run there (it needs browsers); it runs on every pull request in `test.yml`.
 - `index.html` at the root sends visitors to `demo/`; the pages import the modules from `../<module>/`, which is published too.
 
-The workflow runs as it is on `main`, also for pull requests (`pull_request_target`; a pull request's files are only copied out of git, never run), so a change to it, to the build or to `site.json` shows in previews once it is merged.
+The workflow runs as it is on `main`, also for pull requests (`pull_request_target`; a pull request's files are only copied out of git, never run), so a change to it, to the build or to `site.json` shows in previews once it is merged. A merge publishes `main` through its push run; the pull request closed by the merge gets no run that builds. If a publish fails, "Re-run failed jobs" runs only the deploy job again; "Re-run all jobs" would upload a second artifact and fail with "Multiple artifacts", so run the workflow by hand instead (below). `consumer/pages.test.mjs` checks the two jobs and which runs publish.
 
 **The Pages setting** (only the owner can change it): Settings, Pages, Source must be "GitHub Actions". To switch from "Deploy from a branch", then publish:
 ```sh
@@ -128,7 +128,7 @@ The files in `consumer/` are copied into each project; they don't update themsel
 | `update-vendor.yml` | `.github/workflows/update-vendor.yml` | the daily update pull request |
 | `build-site.mjs` | `tools/build-site.mjs` | builds the Pages site: `main` and a preview per pull request |
 | `preview-runtime.js` | `tools/preview-runtime.js` | a preview's own storage and badge |
-| `pages.yml` | `.github/workflows/pages.yml` | checks `main`, builds, publishes, comments the preview links |
+| `pages.yml` | `.github/workflows/pages.yml` | checks `main` and builds (job `build`), publishes and comments the preview links (job `deploy`) |
 
 When you change them:
 
