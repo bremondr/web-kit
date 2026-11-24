@@ -1,6 +1,6 @@
 /* feedback-kit: the address of a new issue on GitHub or GitLab, filled in. No DOM, so it runs in plain Node too.
 
-   issueUrl({provider, host, repo, urlLimit, title, labels, sections, rows, footer}) → {url, shortened}
+   issueUrl({provider, host, repo, urlLimit, title, labels, sections, rows, footer, language, strings}) → {url, shortened}
      provider  'github' (default) or 'gitlab'
      host      the server, such as 'https://gitlab.example.com' or 'https://example.org/gitlab'; by default the
                provider's public one (https://github.com, https://gitlab.com)
@@ -12,9 +12,13 @@
                be too long (the longest first).
      rows      [[name, value]] for the table at the end (the kit adds the device's own rows)
      footer    a small line at the very end
+     language  the language of the kit's own headings: 'en' (default) or 'cs'; strings changes single texts (see
+               strings.js)
 
    issueTarget({provider, host, repo, urlLimit, labels}) checks those and throws if one is wrong; createFeedback calls
    it at once, so a mistake shows when the kit is made, not when someone taps the button. */
+
+import { texts } from './strings.js';
 
 export const URL_LIMIT = 8000;
 
@@ -76,12 +80,13 @@ export function issueTarget({provider = 'github', host, repo, urlLimit, labels =
   return {provider: p, base: `${server}/${parts.join('/')}`};
 }
 
-export function issueBody({sections = [], rows = [], footer = ''}, last = ''){
+export function issueBody({sections = [], rows = [], footer = '', language, strings}, last = ''){
+  const t = texts(language, strings);
   return [
-    '## What’s wrong, and what should happen', '', '', '',
-    '## Picture', '', '<!-- The picture was copied: paste it here, or attach the saved picture. -->', '', '',
+    `## ${t.issueWhat}`, '', '', '',
+    `## ${t.issuePicture}`, '', `<!-- ${t.issuePictureHint} -->`, '', '',
     ...sections.flatMap(s => [`## ${s.heading}`, '', s.text, '']),
-    ...(rows.length ? ['## On screen', '', '| | |', '|---|---|', ...rows.map(([k, v]) => `| ${cell(k)} | ${cell(v)} |`), ''] : []),
+    ...(rows.length ? [`## ${t.issueOnScreen}`, '', '| | |', '|---|---|', ...rows.map(([k, v]) => `| ${cell(k)} | ${cell(v)} |`), ''] : []),
     ...(footer ? [`<sub>${footer}</sub>`] : []),
     ...(last ? ['', last] : [])
   ].join('\n');
@@ -89,6 +94,7 @@ export function issueBody({sections = [], rows = [], footer = ''}, last = ''){
 
 export function issueUrl(issue, limit){
   const {provider: p, base} = issueTarget({...issue, labels: issue.labels || []});
+  texts(issue.language, issue.strings);   // throws now if one is wrong
   const labels = issue.labels || [];
   limit ??= issue.urlLimit ?? p.urlLimit;
   const last = p.labelLine ? p.labelLine(labels) : '';

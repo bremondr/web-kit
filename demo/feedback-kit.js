@@ -53,41 +53,63 @@ fonts.then(css => {
   $('font-status').textContent = css.includes('data:') ? `Bungee, inlined, ${Math.round(css.length / 1024)} KB` : 'Bungee could not be inlined';
 });
 
-// the same kit for GitHub (this repository) and for GitLab (a server that doesn't exist, so nothing goes anywhere);
-// a project makes one, with its own repo
+// the same kit for GitHub (this repository) and for GitLab (a server that doesn't exist, so nothing goes anywhere),
+// in English and in Czech; a project makes one, with its own repo and language
 const TARGETS = {
   github: {repo: 'bremondr/web-kit'},
   gitlab: {provider: 'gitlab', host: 'https://gitlab.example.com/gitlab', repo: 'demo-group/feedback/demo-app'}
 };
-const options = {
+// what this page itself puts in the panel and the issue, in each language (the kit's own texts come with `language`)
+const OWN = {
+  en: {
+    days: DAYS, pictureLabel: 'Just the chart', footer: 'Sent from the feedback-kit demo page in web-kit.',
+    subtitle: name => `Tries per day, ${name}`, fileName: name => `feedback-demo-${name.toLowerCase()}.png`,
+    title: name => `Demo feedback: ${name}`, reopen: 'Reopen', open: name => `Open the chart at ${name}`,
+    fallback: '_The link was too long to include._',
+    rows: (name, tries) => [['Module', 'feedback-kit, from this branch'], ['Day', name], ['Tries', String(tries)]]
+  },
+  cs: {
+    days: ['pondělí', 'úterý', 'středa', 'čtvrtek', 'pátek', 'sobota', 'neděle'], pictureLabel: 'Jen graf',
+    footer: 'Odesláno z ukázkové stránky feedback-kit ve web-kit.',
+    subtitle: name => `Pokusy za den, ${name}`, fileName: () => `zpetna-vazba-ukazka-den-${day + 1}.png`,
+    title: name => `Zpětná vazba z ukázky: ${name}`, reopen: 'Znovu otevřít', open: name => `Otevřít graf (${name})`,
+    fallback: '_Odkaz byl příliš dlouhý, a tak tu není._',
+    rows: (name, tries) => [['Modul', 'feedback-kit z této větve'], ['Den', name], ['Pokusy', String(tries)]]
+  }
+};
+const options = language => ({
+  ...(language === 'en' ? {} : {language}),   // English is the default, with no option
   labels: ['demo'],
-  footer: 'Sent from the feedback-kit demo page in web-kit.',
+  footer: OWN[language].footer,
   // the whole page first; its area is read at each tap, so the checkbox works without making the kit again
   page: {fonts, get area(){ return $('full-page').checked ? 'full' : 'screen'; }},
   // the page's own part, as a switch in the panel
   picture: () => svgPicture($('chart'), {fonts, vars: ['--demo-sky-top', '--demo-sky-bottom']}),
-  pictureLabel: 'Just the chart',
+  pictureLabel: OWN[language].pictureLabel,
   // read at each tap, so the choice on the page works at once
   capture: () => document.querySelector('input[name=capture]:checked').value,
   describe: () => {
-    const name = DAYS[day], tries = TRIES[day];
+    const own = OWN[language], name = own.days[day], tries = TRIES[day];
     let reopen = `${location.origin}${location.pathname}#day=${day + 1}`;
     if ($('long-link').checked) reopen += '&padding=' + 'x'.repeat(9000);   // longer than GitHub or GitLab accepts
     return {
-      subtitle: `Tries per day, ${name}`,
-      fileName: `feedback-demo-${name.toLowerCase()}.png`,
+      subtitle: own.subtitle(name),
+      fileName: own.fileName(name),
       // a promise, as when a project packs its link first: the panel opens at once and the issue link follows
       issue: new Promise(done => setTimeout(() => done({
-        title: `Demo feedback: ${name}`,
-        sections: [{heading: 'Reopen', text: `[Open the chart at ${name}](${reopen})`, fallback: '_The link was too long to include._'}],
-        rows: [['Module', 'feedback-kit, from this branch'], ['Day', name], ['Tries', String(tries)]]
+        title: own.title(name),
+        sections: [{heading: own.reopen, text: `[${own.open(name)}](${reopen})`, fallback: own.fallback}],
+        rows: own.rows(name, tries)
       }), 100))
     };
   }
-};
-const kits = Object.fromEntries(Object.entries(TARGETS).map(([name, target]) => [name, createFeedback({...target, ...options})]));
+});
+const kits = {};
+for (const [name, target] of Object.entries(TARGETS)) for (const language of Object.keys(OWN))
+  kits[`${name} ${language}`] = createFeedback({...target, ...options(language)});
 const provider = () => document.querySelector('input[name=provider]:checked').value;
+const language = () => document.querySelector('input[name=language]:checked').value;
 for (const radio of document.querySelectorAll('input[name=provider]')) radio.addEventListener('change', () => {
   for (const name of Object.keys(TARGETS)) $(`where-${name}`).hidden = name !== provider();
 });
-$('feedback').addEventListener('click', () => kits[provider()].open());
+$('feedback').addEventListener('click', () => kits[`${provider()} ${language()}`].open());

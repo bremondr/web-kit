@@ -6,6 +6,8 @@
    screenshot can be chosen, pasted or dropped instead, a (faked) real screen capture works with the button and at the
    tap and leaves the panel out, the whole scrollable page can be pictured, and the issue link is filled in (also with the Reopen link too long, so the fallback is used).
    With GitLab chosen, the link goes to the example GitLab server, with the label as a /label line and GitLab named in the panel.
+   The panel's texts are English by default; with Czech chosen, no English is left in the panel or the issue (but the
+   browser's user agent), and no text in the panel is cut off or wider than its place.
    On the git-store-kit page (against its fake GitHub): the public repo loads without a token and the private one
    asks for one; a token pasted in the panel opens it; publishing sends one commit; a change made elsewhere brings up
    the conflict question, and each answer works; an item's history lists its versions and opens and restores one;
@@ -22,9 +24,10 @@ import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
 import { mkdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, extname, join, resolve, sep } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const { STRINGS } = await import(pathToFileURL(join(root, 'feedback-kit/strings.js')).href);   // the kit's texts
 const require = createRequire(import.meta.url);   // finds Playwright in node_modules or in a global install
 const option = (name, otherwise) => { const k = process.argv.indexOf(name); return k > 0 ? process.argv[k + 1] || otherwise : null; };
 const browserName = option('--browser', 'chromium') || 'chromium';
@@ -123,6 +126,13 @@ async function checkFeedback(page, where, scheme, size) {
   // the canvas shows once the picture is ready, and "Making the picture…" goes
   await page.locator('.fk-wait').waitFor({ state: 'hidden', timeout: 5000 }).catch(() => fail(where, 'no picture in the panel'));
   await page.waitForFunction(() => !/^Making/.test(document.querySelector('.fk-status').textContent), null, { timeout: 5000 }).catch(() => {});
+
+  // the kit's English texts, as without the language option
+  if (await panel.getAttribute('lang') !== null) fail(where, 'the English panel has a lang attribute (the kit sets it only with language)');
+  const enPanel = await panelTexts(page);
+  for (const text of ['Send feedback', 'Write the issue on GitHub', 'Whole page', 'Use my screenshot…', 'Undo', 'Clear', 'Copy picture', 'Save picture', 'Red pen', 'Pen colour',
+    'Draw on the picture to point at the problem.', 'The issue opens on GitHub with what was on screen filled in. Sign in, paste the picture, say what’s wrong, and tap Submit.'])
+    if (!enPanel.split('\n').includes(text)) fail(where, `the English panel has no "${text}"`);
 
   // a hidden canvas is really hidden (the kit's own display rule once won over the hidden attribute)
   const hiddenShows = await page.evaluate(() => {
@@ -370,6 +380,62 @@ async function checkFeedback(page, where, scheme, size) {
   if (shots) await page.screenshot({ path: join(shots, `feedback-panel-gitlab-${size}-${scheme}.png`) });
   await open.locator('.fk-x').click();
   await page.check('input[name=provider][value=github]');
+
+  // Czech: language: 'cs' (another panel again). No English in the panel or in the issue, and the longer words fit
+  await page.check('input[name=language][value=cs]');
+  await page.click('#feedback');
+  await open.locator('.fk-wait').waitFor({ state: 'hidden', timeout: 5000 }).catch(() => fail(where, 'Czech: no picture in the panel'));
+  await page.waitForFunction(() => !/^Připravuji/.test(document.querySelector('.fk:not([hidden]) .fk-status').textContent), null, { timeout: 5000 }).catch(() => {});
+  await page.waitForFunction(() => document.querySelector('.fk:not([hidden]) .fk-primary')?.href, null, { timeout: 5000 }).catch(() => {});
+  if (await open.getAttribute('lang') !== 'cs') fail(where, 'Czech: the panel has no lang="cs"');
+  const csButton = await open.locator('.fk-primary').textContent();
+  if (csButton !== 'Napsat hlášení na GitHubu') fail(where, `Czech: the button says "${csButton}"`);
+  const csPanel = await panelTexts(page);
+  for (const text of englishIn(csPanel)) fail(where, `Czech: the panel has English in it: "${text}"`);
+  const cut = await page.evaluate(() => {
+    const card = document.querySelector('.fk:not([hidden]) .fk-card').getBoundingClientRect();
+    return [...document.querySelectorAll('.fk:not([hidden]) :is(button, a, p, h2, .fk-side)')].filter(e => e.offsetParent !== null && !e.matches('.fk-sub')).flatMap(e => {
+      const r = e.getBoundingClientRect(), what = (e.textContent || e.getAttribute('aria-label') || e.className).trim().slice(0, 40);
+      return [
+        ...(e.scrollWidth > e.clientWidth + 1 ? [`"${what}" is ${e.scrollWidth - e.clientWidth} px wider than its box`] : []),
+        ...(r.left < card.left - 0.5 || r.right > card.right + 0.5 ? [`"${what}" sticks out of the panel`] : [])
+      ];
+    });
+  });
+  for (const c of cut) fail(where, `Czech: ${c}`);
+  const csIssue = await issueOf(page);
+  if (!csIssue) fail(where, 'Czech: the issue link was not filled in');
+  else {
+    if (!/^Zpětná vazba z ukázky: \p{L}+$/u.test(csIssue.title)) fail(where, `Czech: the issue's title is "${csIssue.title}"`);
+    for (const part of ['## Co je špatně a co by se mělo stát', '## Obrázek', '## Znovu otevřít', '## Na obrazovce', '| Obrazovka |', '| Prohlížeč |', '| Stránka |', ...(size === 'desktop' ? ['| Okno |'] : [])])
+      if (!csIssue.body.includes(part)) fail(where, `Czech: the issue's body has no "${part}"`);
+    const ua = await page.evaluate(() => navigator.userAgent);
+    for (const text of englishIn(csIssue.body.replace(ua, '').replace(/https?:\/\/[^\s)|]+/g, ''))) fail(where, `Czech: the issue has English in it: "${text}"`);
+  }
+  if (shots) await page.screenshot({ path: join(shots, `feedback-panel-cs-${size}-${scheme}.png`) });
+  await open.locator('.fk-x').click();
+  await page.check('input[name=language][value=en]');
+}
+
+// every text in the open panel, shown or not (hidden buttons and messages too), with labels and titles
+async function panelTexts(page) {
+  return page.evaluate(() => {
+    const root = document.querySelector('.fk:not([hidden])'), out = [];
+    const walk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    while (walk.nextNode()) if (walk.currentNode.nodeValue.trim()) out.push(walk.currentNode.nodeValue.trim());
+    for (const e of [root, ...root.querySelectorAll('*')]) for (const a of ['aria-label', 'title']) if (e.getAttribute(a)) out.push(e.getAttribute(a));
+    return out.join('\n');
+  });
+}
+
+// the kit's English texts in `text`, and English words of theirs that Czech doesn't use too (px, PNG, …)
+function englishIn(text) {
+  text = text.replace(/\b(feedback|web)-kit\b/g, '');   // the module's name, in the demo's own Czech texts
+  const words = t => t.toLowerCase().match(/\p{L}+/gu) || [];
+  const czech = new Set(words(Object.values(STRINGS.cs).join(' ')));
+  const english = new Set(words(Object.values(STRINGS.en).join(' ')).filter(w => !czech.has(w) && w.length > 1));
+  const whole = Object.entries(STRINGS.en).filter(([k, v]) => v !== STRINGS.cs[k] && v.length > 2 && !v.includes('{') && !k.startsWith('provider.')).map(([, v]) => v);
+  return [...whole.filter(t => text.includes(t)), ...new Set(words(text).filter(w => english.has(w)))];
 }
 
 async function checkGitStore(page, where, scheme, size) {
