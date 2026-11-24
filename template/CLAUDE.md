@@ -12,6 +12,7 @@ Read `README.md` first: what the app does, how the code is laid out, and the che
 - Logic that doesn't need the page goes in modules without DOM code, so it can be tested in plain Node (like `js/tally.js`).
 - `js/vendor/` holds copies of modules released in [bremondr/web-kit](https://github.com/bremondr/web-kit) (versions in `vendor.json`). Don't edit them here: change the module in web-kit, release it, then run `node tools/update-vendor.mjs` (or wait for the daily "Update vendored modules" pull request). Code of this app that uses a module stays outside `js/vendor/`.
 - `tools/update-vendor.mjs`, `tools/build-site.mjs`, `tools/preview-runtime.js`, `.github/workflows/update-vendor.yml` and `.github/workflows/pages.yml` are copies of web-kit's consumer files. Don't edit them here either: what differs for this app goes in `site.json` and `vendor.json`.
+- `.claude/skills/` holds Claude Code skills copied from web-kit (`localize`: translating the app). Improve them in web-kit, then copy them again.
 - Everything written in the repository (code comments, README, issues, PRs, commit messages) is in English, in plain words.
 
 ## Checks (run before opening a PR)

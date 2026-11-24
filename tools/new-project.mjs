@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /* Starts a new project: a folder with web-kit's starter template (template/) and the consumer files projects copy
    (consumer/), so it has previews, vendored modules and its checks from the first commit. The template keeps no
-   copies of the consumer files: they are taken from consumer/ here, so they never drift apart.
+   copies of the consumer files: they are taken from consumer/ here, so they never drift apart. The same goes for
+   web-kit's Claude Code skills that projects share (SKILL_DIRS), copied as they are.
    Plain Node 18+, no packages. From a clone of web-kit:
 
      node tools/new-project.mjs <folder> --repo <owner>/<name> [--title "The App's Name"]
@@ -22,6 +23,9 @@ export const CONSUMER_FILES = {
   'consumer/preview-runtime.js': 'tools/preview-runtime.js',
   'consumer/pages.yml': '.github/workflows/pages.yml'
 };
+
+/** Folders of Claude Code skills that every project gets, copied unchanged to the same place. */
+export const SKILL_DIRS = ['.claude/skills/localize'];
 
 const TEXT = /\.(?:html|css|js|mjs|md|json|yml|txt|webmanifest)$/i;
 
@@ -62,6 +66,9 @@ export function assemble({ target, repo, title, source = ROOT }) {
     write(file, TEXT.test(file) ? fill(data.toString('utf8'), values) : data);
   }
   for (const [from, to] of Object.entries(CONSUMER_FILES)) write(to, fs.readFileSync(path.join(source, from)));
+  for (const dir of SKILL_DIRS) {
+    for (const file of filesIn(path.join(source, dir))) write(`${dir}/${file}`, fs.readFileSync(path.join(source, dir, file)));
+  }
   return written.sort();
 }
 

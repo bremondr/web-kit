@@ -13,6 +13,7 @@ Reusable modules for static web apps, each copied into projects at a released ve
 - Everything written in the repository (code comments, READMEs, changelogs, issues, PRs, commit messages) is in English, in plain words. The owner often gives feedback in Czech.
 - The files in `consumer/` are the originals that projects copy: `update-vendor.mjs` and `update-vendor.yml` (vendored modules), and `pages.yml`, `build-site.mjs` and `preview-runtime.js` (the site and pull request previews, set per project in `site.json`). They don't update themselves. Keep old copies working, add an entry to `consumer/CHANGELOG.md`, and say in the PR whether projects need a new copy.
 - When a change affects how projects set up or use a module, update `docs/setup-project.md` and the module's "Setting it up in a project" section too.
+- `.claude/skills/` holds Claude Code skills that sessions here use and that `tools/new-project.mjs` copies into new projects (`SKILL_DIRS`), for example `localize` (translating a module or an app). They are not modules; the site build doesn't publish them. A change to one reaches existing projects only when they copy it again (`docs/setup-project.md`).
 - `template/` is a starting point for new projects, not a module. When a consumer file or the projects' common setup changes, keep `template/` and `docs/new-project.md` in step.
 
 ## Checks (run all three before opening a PR)
