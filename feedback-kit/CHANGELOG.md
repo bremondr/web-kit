@@ -2,7 +2,7 @@
 
 Each version is released as the tag `feedback-kit-vX.Y.Z`. A new major version (the first number) means a project using the kit may need changes; the notes say which.
 
-## 2.2.0 (unreleased)
+## 2.2.0 (2026-11-24)
 
 The panel and the issue in another language: Czech is built in.
 
