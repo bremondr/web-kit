@@ -197,7 +197,7 @@ If the project already has a deploy workflow (`.github/workflows/pages.yml` or a
 }
 ```
 
-For Protogames (landing page at the root, the editor in `app/`, no analytics in previews):
+For Protogames (landing page at the root, the editor in `app/`, no analytics in previews, `window.PG_BUILD` that its landing page reads, and `app/package.json` left out):
 
 ```json
 {
@@ -206,9 +206,13 @@ For Protogames (landing page at the root, the editor in `app/`, no analytics in 
   "pages": ["index.html", "app/index.html"],
   "dropFromPreviews": ["simpleanalyticscdn"],
   "checks": ["npm test"],
-  "commentMarker": "<!-- protogames-preview -->"
+  "global": "PG_BUILD",
+  "commentMarker": "<!-- protogames-preview -->",
+  "exclude": ["app/package.json"]
 }
 ```
+
+If the project's code reads the preview's description (its `storagePrefix`, for example) under a name of its own, as Protogames' landing page reads `PG_BUILD.storagePrefix`, name it in `global`: the runtime sets only `window.SITE_PREVIEW` otherwise, and that code then finds nothing and acts as it does on the live site.
 
 Keep `commentMarker` the same as the old workflow's, so the bot updates the comments already on open pull requests instead of adding new ones. A service worker named in `serviceWorker` must have `const VERSION = '…';` and a `const APP_FILES = [ … ];` list (closing `];` on a line of its own): the build fills both in from what is published, so nobody bumps them by hand.
 
