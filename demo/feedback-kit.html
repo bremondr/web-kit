@@ -113,6 +113,8 @@
           <li>In a desktop browser, "Take a real screenshot" asks to share this tab and takes an exact picture.</li>
           <li>The row of days under the chart scrolls sideways. Where the screen shows no scrollbar there (iPad,
             phones, macOS), neither does the picture.</li>
+          <li>Switch the language to Czech: every text in the panel and in the issue is Czech then, except the browser's
+            user agent.</li>
           <li>Try it in light and dark mode, and upright and sideways on the iPad.</li>
         </ul>
       </section>
@@ -130,6 +132,11 @@
           server doesn't exist, so nothing is sent anywhere: the link only shows the address the kit makes for a
           self-hosted GitLab with nested groups.</p>
         <fieldset class="modes small">
+          <legend>Language of the panel and the issue</legend>
+          <label class="option"><input type="radio" name="language" value="en" checked><span>English (the default)</span></label>
+          <label class="option"><input type="radio" name="language" value="cs" lang="cs"><span lang="cs">Čeština (<code>language: 'cs'</code>)</span></label>
+        </fieldset>
+        <fieldset class="modes small">
           <legend>Real screen capture (desktop browsers)</legend>
           <label class="option"><input type="radio" name="capture" value="button" checked><span>A button in the panel</span></label>
           <label class="option"><input type="radio" name="capture" value="tap"><span>Right at the tap, before the panel</span></label>
@@ -138,7 +145,7 @@
         <label class="option small"><input type="checkbox" id="full-page">
           <span>Picture the whole scrollable page, not only what is on screen.</span></label>
         <label class="option small"><input type="checkbox" id="long-link">
-          <span>Make the Reopen link too long, to see its fallback text and the panel's note.</span></label>
+          <span>Make the Reopen link too long, to see its fallback text and the panel's note that names it.</span></label>
       </section>
     </aside>
   </div>

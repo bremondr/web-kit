@@ -163,6 +163,8 @@ If something needs a change in the module, don't work around it here: describe i
 bremondr/web-kit and tell me.
 ```
 
+feedback-kit 2.2.0 adds languages (`language: 'cs'` for Czech, `strings` for single texts); a project that stays in English needs no change, except `strings.js` in the service worker's list, if it has one.
+
 feedback-kit 2.1.0 adds GitLab (`provider`, `host`, `urlLimit`); a project on GitHub needs no change.
 
 For feedback-kit 2.0.0 (whole-page picture, own screenshot, screen capture), "What to change" covers: `page.js` in the service worker's list, `page: {fonts}` and `area`, a `pictureLabel` for the app's own `picture` (or removing it), and `data-fk-skip`.
@@ -279,7 +281,7 @@ Do steps 1 to 5 of the setup guide:
   node tools/update-vendor.mjs --verify;
 - wire it in as its README says, with the project's own code outside the vendored folder. feedback-kit: link its
   CSS and set the --fk-* colours and fonts to the project's own. Write one feedback file of the project's own, with
-  repo and labels, page: {fonts} with the web fonts the page uses (and area, if the whole scrollable page is more
+  repo and labels, language: 'cs' if the app is in Czech, page: {fonts} with the web fonts the page uses (and area, if the whole scrollable page is more
   useful than what is on screen), and describe with what is on screen. Add a "Reopen" section with a link back to
   this view (with a fallback) if the app can make one. If one part of the app is what people will point at (a
   chart, a field), add it as picture with a pictureLabel. Give data-fk-skip to anything that shouldn't be in the
