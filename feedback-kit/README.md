@@ -21,6 +21,7 @@ It began in [Ultimate Playbook](https://github.com/bremondr/ultimate-playbook) b
 | `page.js` | `pagePicture(element, options)`: a picture of the whole page (or of one element), redrawn from what is on screen. `screenPicture(options)`: a real screenshot from the browser's screen capture, on desktop browsers (`canCaptureScreen()` says if there is one) |
 | `picture.js` | `svgPicture(svg, options)`: a PNG-ready canvas of an SVG as it looks now. `embedFonts({stylesheet, family, unicode})`: web fonts inlined for it, from a stylesheet on Google Fonts or the app's own (`unicode` picks subsets by `unicode-range`, Latin by default; rules without one are always kept) |
 | `sketch.js` | `createSketch(canvas)`: drawing on a picture |
+| `strings.js` | every text the kit shows or writes, in English and Czech (`STRINGS`); `texts(language, strings)` picks them, `format(template, values)` fills one in |
 | `issue.js` | `issueUrl(issue)`: the new-issue address on GitHub or GitLab, kept under the length limit. `issueTarget(options)`: checks `provider`, `host`, `repo`, `urlLimit` and `labels`. No DOM, so it runs in Node |
 | `feedback-kit.css` | the panel; themed with `--fk-*` custom properties |
 
@@ -47,6 +48,7 @@ const feedback = createFeedback({
   picture: () => svgPicture(document.querySelector('#chart'), {fonts}),
   pictureLabel: 'Just the chart',
   capture: 'button',                     // a real screen capture on desktop browsers: 'button', 'tap' or 'off'
+  // language: 'cs',                     // the kit's own texts: English by default, see "Languages" below
   // what was on screen, also called in the tap
   describe: () => ({
     subtitle: 'Sales chart, March',      // under the panel's heading
@@ -95,6 +97,25 @@ What GitLab does differently (checked in November 2026 against gitlab.com and Gi
 - **Length.** gitlab.com accepted new-issue addresses up to about 10,200 characters and refused longer ones (error 400). The default `urlLimit` of 8000 leaves room for a self-hosted server, whose proxy may accept less (nginx's default is about 8 KB for the whole request line). If people on your server get an error instead of the form, lower it.
 - **The rest is the same**: the table, the hidden `<!-- -->` note and the `<sub>` footer render on GitLab, and pasting the picture into the description works.
 
+### Languages
+
+The kit's own texts (the panel, the issue's headings and the device's rows) are English by default. For Czech:
+
+```js
+createFeedback({
+  language: 'cs',                        // 'en' (default) or 'cs'
+  strings: {openIssue: 'Nahlásit na {provider}'},   // optional: single texts over the language's
+  pictureLabel: 'Jen graf',              // your own texts stay yours: write them in the same language
+  // ...the rest as above
+});
+```
+
+- `language: 'cs'` makes every text Czech: "Napsat hlášení na GitHub", "Zpět", "Vymazat", the messages under the picture, the pens' names, the issue's headings ("Co je špatně a co by se mělo stát", "Obrázek", "Na obrazovce") and the device's rows ("Obrazovka: 1180 × 820 px, na šířku, poměr pixelů 2, světlý režim"). Only the browser's user agent stays as the browser gives it. The panel gets `lang="cs"`.
+- The default `heading` ("Poslat zpětnou vazbu") and `pictureLabel` ("Jen tato část") follow the language; if you give them, yours win. What `describe` gives (subtitle, title, rows, sections) and `footer` are yours, so write them in the same language.
+- `strings` changes single texts: `{key: text}`, with the keys of `STRINGS.en` in `strings.js`. An unknown key throws, so a typo shows at once.
+- **Another language**: give its code and all its texts in `strings` (`language: 'de', strings: {...}`); what you leave out is English. Better still, add it to `strings.js` in web-kit, where a test checks that every language has every key.
+- Texts with `{name}` in them are templates, filled in by the kit: `openIssue` and `issueNote` get `{provider}`, which is the provider's own entry for that language (`provider.github`, `provider.gitlab`; in English and Czech just "GitHub" and "GitLab", but a language whose grammar changes the name can give its own form). `penLabel` gets `{pen}`; the device rows get sizes, `{orientation}`, `{theme}` and `{ratio}` (with the language's `decimal` point).
+
 ### The pictures
 
 Both are taken in the tap, so they show the same moment.
@@ -142,6 +163,7 @@ With the kit copied into the project (see [web-kit's setup guide](../docs/setup-
    Or on the web: the project, then **Manage › Labels › New label**, name `feedback`, and **Create label**. A label made in a group (the group's **Manage › Labels**) works in all its projects. If it's missing, the `/label` line does nothing.
 2. **The styles.** Link `js/vendor/feedback-kit/feedback-kit.css`, and set the `--fk-*` properties to the project's colours and fonts (see Theming). Set `--fk-z` above anything else that covers the page.
 3. **The adapter.** Write one project file, for example `js/features/feedback.js`, that calls `createFeedback` with:
+   - `language: 'cs'` if the app is in Czech (see "Languages");
    - `repo` and `labels`, and for GitLab `provider: 'gitlab'` and, if it isn't gitlab.com, `host` (see "GitHub or GitLab");
    - `page`: `{fonts}` with the web fonts the page uses (through `embedFonts`), and `area: 'full'` if the whole scrollable page is more useful than what is on screen. Give `data-fk-skip` to anything that shouldn't be in the picture;
    - `capture`: `'button'` (default), `'tap'` if every report should start with a real screenshot on desktop, or `'off'`;
@@ -149,7 +171,7 @@ With the kit copied into the project (see [web-kit's setup guide](../docs/setup-
    - `describe`: what is on screen (`subtitle`, `fileName`, and `issue` with `title`, `rows` and `sections`). Most useful is a section with a link that reopens exactly this view, if the app can make one. Give it a `fallback` text, because long links may not fit.
    Keep this file out of the vendored folder.
 4. **The button.** Call `feedback.open()` from a tap: the kit copies the picture to the clipboard during that tap. Pause any animation first if the picture should match what the person saw.
-5. **Offline.** If a service worker keeps a list of files, add the kit's six files (`kit.js`, `page.js`, `picture.js`, `sketch.js`, `issue.js`, `feedback-kit.css`). If it also caches web fonts, see Offline below.
+5. **Offline.** If a service worker keeps a list of files, add the kit's seven files (`kit.js`, `page.js`, `picture.js`, `sketch.js`, `issue.js`, `strings.js`, `feedback-kit.css`). If it also caches web fonts, see Offline below.
 6. **Preview builds (optional).** A preview banner or a debug page can open the panel without importing the app. The app listens for an event and cancels it to show it handled it:
    ```js
    document.addEventListener('myapp:feedback', e => { e.preventDefault(); feedback.open(); });

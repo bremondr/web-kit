@@ -2,6 +2,17 @@
 
 Each version is released as the tag `feedback-kit-vX.Y.Z`. A new major version (the first number) means a project using the kit may need changes; the notes say which.
 
+## 2.2.0 (unreleased)
+
+The panel and the issue in another language: Czech is built in.
+
+- **New option `language`** for `createFeedback` and `issueUrl`: `'en'` (the default) or `'cs'`. It changes every text the kit shows or writes: the buttons, notes and messages in the panel, the pens' names, the issue's headings ("Co je špatně a co by se mělo stát", "Obrázek", "Na obrazovce") and the device's rows (Obrazovka, Okno, Prohlížeč, Stránka, and their values). The panel gets `lang="cs"`. The default `heading` and `pictureLabel` follow the language; given ones win.
+- **New option `strings`**: `{key: text}` over the chosen language, to change single texts (`{openIssue: 'Nahlásit na {provider}'}`), or with another language code, to give a whole new language (what it leaves out is English). An unknown language without `strings`, an unknown key or a text that isn't a string throws when `createFeedback` is called.
+- **New file `strings.js`**: every text, by language (`STRINGS`), and `texts(language, strings)` and `format(template, values)`. Texts with a value in them are templates (`'Write the issue on {provider}'`, `'{pen} pen'`), so a language puts it where its grammar wants. The provider's name has its own entry per language (`provider.github`), for a language whose grammar changes it.
+- `deviceRows(texts)` takes the texts; without them, English.
+
+Without `language`, the panel and the issue are exactly as before. **What to change in a project:** add `strings.js` to the service worker's list of files, if there is one (`kit.js` imports it). Set `language: 'cs'` for a Czech app, and remove the `heading` and `pictureLabel` that only translated the defaults.
+
 ## 2.1.2 (2026-11-24)
 
 - **A screen capture no longer fails now and then in WebKit.** `screenPicture()` plays the capture in a hidden video. WebKit's video sometimes never shows a live stream it was given, though the stream keeps sending frames, so after about four seconds the panel fell back to the page's picture. Now, when the video has no frame after half a second (and again after a second and a half), it is given the stream again, which makes it show at once. Other browsers never get there.
