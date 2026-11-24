@@ -304,8 +304,9 @@ async function checkFeedback(page, where, scheme, size) {
       if (fakeCapture.answer !== 'yes') throw new DOMException('declined', 'NotAllowedError');
       const c = document.createElement('canvas'); c.width = 1280; c.height = 800;
       const x = c.getContext('2d'), paint = () => { x.fillStyle = '#12ab34'; x.fillRect(0, 0, c.width, c.height); };
-      // captureStream() with no frame rate: a frame each time the canvas is painted. In WebKit, captureStream(20)
-      // with this canvas (not on the page, painted every 50 ms) sometimes gives no frame at all (issue #20)
+      // captureStream() with no frame rate: a frame each time the canvas is painted. In WebKit, the kit's video
+      // sometimes never shows such a stream until it is given it again; screenPicture does
+      // that (issue #20), so these steps stay strict
       paint(); setInterval(paint, 50);
       return c.captureStream();
     };
