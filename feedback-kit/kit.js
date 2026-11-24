@@ -31,7 +31,7 @@
 import { issueTarget, issueUrl } from './issue.js';
 import { createSketch } from './sketch.js';
 import { canCaptureScreen, pagePicture, screenPicture } from './page.js';
-import { format, STRINGS, texts } from './strings.js';
+import { format, listOf, STRINGS, texts } from './strings.js';
 
 const PENS = [['#ff2d55', 'penRed'], ['#ffffff', 'penWhite'], ['#1f6feb', 'penBlue'], ['#111111', 'penBlack']];
 
@@ -97,7 +97,7 @@ export function createFeedback({repo, provider = 'github', host, urlLimit, label
     q.clear = element('button', {type: 'button', class: 'fk-btn', text: t.clear});
     q.status = element('p', {class: 'fk-status', role: 'status'});
     q.open = element('a', {class: 'fk-primary', target: '_blank', rel: 'noopener', 'aria-disabled': 'true', text: format(t.openIssue, {provider: site})});
-    q.long = element('p', {class: 'fk-note', hidden: true});
+    q.long = element('p', {class: 'fk-note fk-long', hidden: true});
     q.copy = element('button', {type: 'button', class: 'fk-btn', text: t.copy});
     q.kinds = {
       page: element('button', {type: 'button', class: 'fk-btn', 'aria-pressed': 'true', text: t.kindPage}),
@@ -288,9 +288,9 @@ export function createFeedback({repo, provider = 'github', host, urlLimit, label
     const mine = run;
     Promise.resolve(info.issue).then(issue => {
       if (mine !== run) return;
-      const {url, shortened} = issueUrl({provider, host, repo, urlLimit, labels, footer, ...issue, language, strings, rows: [...(issue.rows || []), ...deviceRows(t)]});
+      const {url, shortened, gaveWay} = issueUrl({provider, host, repo, urlLimit, labels, footer, ...issue, language, strings, rows: [...(issue.rows || []), ...deviceRows(t)]});
       ui.open.href = url; ui.open.removeAttribute('aria-disabled');
-      ui.long.textContent = shortened ? t.tooLong : '';
+      ui.long.textContent = shortened ? format(t.tooLong, {sections: listOf(gaveWay, language)}) : '';
       ui.long.hidden = !shortened;
     });
   }

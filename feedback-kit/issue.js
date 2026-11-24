@@ -1,6 +1,8 @@
 /* feedback-kit: the address of a new issue on GitHub or GitLab, filled in. No DOM, so it runs in plain Node too.
 
-   issueUrl({provider, host, repo, urlLimit, title, labels, sections, rows, footer, language, strings}) → {url, shortened}
+   issueUrl({provider, host, repo, urlLimit, title, labels, sections, rows, footer, language, strings})
+     → {url, shortened, gaveWay}: shortened is true when a section gave way to its fallback, and gaveWay lists the
+       headings of those sections, in the order they are in the issue ([] when nothing gave way)
      provider  'github' (default) or 'gitlab'
      host      the server, such as 'https://gitlab.example.com' or 'https://example.org/gitlab'; by default the
                provider's public one (https://github.com, https://gitlab.com)
@@ -99,13 +101,15 @@ export function issueUrl(issue, limit){
   limit ??= issue.urlLimit ?? p.urlLimit;
   const last = p.labelLine ? p.labelLine(labels) : '';
   const address = it => p.address(base, it, issueBody(it, last));
-  let it = {...issue, sections: [...(issue.sections || [])]}, url = address(it), shortened = false;
+  let it = {...issue, sections: [...(issue.sections || [])]}, url = address(it);
+  const gave = new Set();
   // give way section by section, the longest first, until the address fits
   const order = it.sections.map((s, k) => k).filter(k => it.sections[k].fallback !== undefined)
     .sort((a, b) => it.sections[b].text.length - it.sections[a].text.length);
   for (const k of order){
     if (url.length <= limit) break;
-    it.sections[k] = {...it.sections[k], text: it.sections[k].fallback}; shortened = true; url = address(it);
+    it.sections[k] = {...it.sections[k], text: it.sections[k].fallback}; gave.add(k); url = address(it);
   }
-  return {url, shortened};
+  const gaveWay = [...gave].sort((a, b) => a - b).map(k => it.sections[k].heading);
+  return {url, shortened: gaveWay.length > 0, gaveWay};
 }

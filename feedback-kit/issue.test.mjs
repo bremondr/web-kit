@@ -9,9 +9,10 @@ const issue = {repo: 'o/r', title: 'Feedback: chart', labels: ['feedback'], foot
   rows: [['View', 'Sales | March'], ['Empty', '']]};
 
 test('the address has the title, the labels and the body', () => {
-  const {url, shortened} = issueUrl(issue);
+  const {url, shortened, gaveWay} = issueUrl(issue);
   assert.ok(url.startsWith('https://github.com/o/r/issues/new?'));
   assert.equal(shortened, false);
+  assert.deepEqual(gaveWay, []);
   const q = params(url);
   assert.equal(q.get('title'), 'Feedback: chart');
   assert.equal(q.get('labels'), 'feedback');
@@ -33,6 +34,27 @@ test('the longest sections give way to their fallback until the address fits', (
   assert.ok(url.length <= URL_LIMIT);
   const body = params(url).get('body');
   assert.ok(body.includes('## A\n\nkept') && body.includes('B was too long') && body.includes('## C\n\nshort'));
+});
+
+test('gaveWay names the sections that gave way, in the order they are in the issue', () => {
+  const long = n => 'x'.repeat(n);
+  const sections = [
+    {heading: 'Kept', text: 'short', fallback: '_Kept was too long._'},
+    {heading: 'Second longest', text: long(3000), fallback: '_Too long._'},
+    {heading: 'No fallback', text: long(1000)},
+    {heading: 'Longest', text: long(4000), fallback: '_Too long._'}];
+  // one is enough: only the longest gives way
+  let r = issueUrl({...issue, sections}, 6000);
+  assert.deepEqual([r.shortened, r.gaveWay], [true, ['Longest']]);
+  // two are needed: both, in the issue's order, not the order they gave way in
+  r = issueUrl({...issue, sections}, 3000);
+  assert.deepEqual([r.shortened, r.gaveWay], [true, ['Second longest', 'Longest']]);
+  assert.ok(params(r.url).get('body').includes('## Kept\n\nshort'));
+  // nothing is long enough to give way: none
+  r = issueUrl({...issue, sections}, 9000);
+  assert.deepEqual([r.shortened, r.gaveWay], [false, []]);
+  // no sections at all
+  assert.deepEqual(issueUrl({repo: 'o/r', title: 'T'}).gaveWay, []);
 });
 
 test('empty parts are left out', () => {
