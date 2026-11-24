@@ -6,7 +6,7 @@
    the whole scrollable page, where a tap draws right under it), the row that scrolls sideways has no scrollbar in the
    picture when the screen shows none, a stroke can be drawn and undone, the person's own
    screenshot can be chosen, pasted or dropped instead, a (faked) real screen capture works with the button and at the
-   tap and leaves the panel out, the whole scrollable page can be pictured, and the issue link is filled in (also with the Reopen link too long, so the fallback is used).
+   tap and leaves the panel out, the whole scrollable page can be pictured, and the issue link is filled in (also with the Reopen link too long, so the fallback is used and the panel's note names the Reopen section, in English and Czech).
    With GitLab chosen, the link goes to the example GitLab server, with the label as a /label line and GitLab named in the panel.
    The panel's texts are English by default; with Czech chosen, no English is left in the panel or the issue (but the
    browser's user agent), no text in the panel is cut off or wider than its place, and Czech letters (Ě) are drawn in
@@ -253,6 +253,8 @@ async function checkFeedback(page, where, scheme, size) {
   const long = await issueOf(page);
   if (!long || !long.body.includes('_The link was too long to include._')) fail(where, 'the too-long Reopen link did not give way to its fallback');
   else if (!long.shortened) fail(where, 'the panel does not say the issue was shortened');
+  else if (long.note !== 'Too long to put in the issue: Reopen. It has a shorter note in its place, so add that part by hand if it matters.')
+    fail(where, `the panel's note on the too-long link says "${long.note}"`);
   if (long && long.url.length > 8000) fail(where, `the issue link is ${long.url.length} characters long`);
   await page.click('.fk-x');
   await page.uncheck('#long-link');
@@ -455,13 +457,27 @@ async function checkFeedback(page, where, scheme, size) {
   if (!csIssue) fail(where, 'Czech: the issue link was not filled in');
   else {
     if (!/^Zpětná vazba z ukázky: \p{L}+$/u.test(csIssue.title)) fail(where, `Czech: the issue's title is "${csIssue.title}"`);
-    for (const part of ['## Co je špatně a co by se mělo stát', '## Obrázek', '## Znovu otevřít', '## Na obrazovce', '| Obrazovka |', '| Prohlížeč |', '| Stránka |', ...(size === 'desktop' ? ['| Okno |'] : [])])
+    for (const part of ['## Co je špatně a co by se mělo stát', '## Snímek obrazovky', '## Znovu otevřít', '## Na obrazovce', '| Obrazovka |', '| Prohlížeč |', '| Stránka |', ...(size === 'desktop' ? ['| Okno |'] : [])])
       if (!csIssue.body.includes(part)) fail(where, `Czech: the issue's body has no "${part}"`);
     const ua = await page.evaluate(() => navigator.userAgent);
     for (const text of englishIn(csIssue.body.replace(ua, '').replace(/https?:\/\/[^\s)|]+/g, ''))) fail(where, `Czech: the issue has English in it: "${text}"`);
   }
   if (shots) await page.screenshot({ path: join(shots, `feedback-panel-cs-${size}-${scheme}.png`) });
   await open.locator('.fk-x').click();
+
+  // Czech, with the Reopen link too long: the note names the section by its Czech heading
+  await page.check('#long-link');
+  await page.click('#feedback');
+  await page.waitForFunction(() => document.querySelector('.fk:not([hidden]) .fk-primary')?.href, null, { timeout: 5000 }).catch(() => {});
+  const csLong = await issueOf(page);
+  if (!csLong || !csLong.shortened) fail(where, 'Czech: the panel does not say the issue was shortened');
+  else if (csLong.note !== 'Do hlášení se nevešlo: Znovu otevřít. Je v něm místo toho kratší poznámka, takže pokud na tom záleží, doplňte to ručně.')
+    fail(where, `Czech: the panel's note on the too-long link says "${csLong.note}"`);
+  if (csLong && !(await open.locator('.fk-long').isVisible())) fail(where, 'Czech: the too-long note is not visible');
+  await open.locator('.fk-wait').waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+  if (shots) await page.screenshot({ path: join(shots, `feedback-panel-cs-long-${size}-${scheme}.png`) });
+  await open.locator('.fk-x').click();
+  await page.uncheck('#long-link');
   await page.check('input[name=language][value=en]');
 }
 
@@ -712,8 +728,8 @@ async function issueOf(page) {
     const a = document.querySelector('.fk:not([hidden]) .fk-primary') || document.querySelector('.fk-primary');
     if (!a.href) return null;
     const q = new URL(a.href).searchParams;
-    const note = [...document.querySelectorAll('.fk:not([hidden]) .fk-side .fk-note')].find(n => /too long/.test(n.textContent));
-    return { url: a.href, title: q.get('title'), labels: q.get('labels'), body: q.get('body'), shortened: !!note && !note.hidden };
+    const note = document.querySelector('.fk:not([hidden]) .fk-long');
+    return { url: a.href, title: q.get('title'), labels: q.get('labels'), body: q.get('body'), shortened: !!note && !note.hidden, note: note?.textContent };
   });
 }
 

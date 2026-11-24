@@ -21,8 +21,8 @@ It began in [Ultimate Playbook](https://github.com/bremondr/ultimate-playbook) b
 | `page.js` | `pagePicture(element, options)`: a picture of the whole page (or of one element), redrawn from what is on screen. `screenPicture(options)`: a real screenshot from the browser's screen capture, on desktop browsers (`canCaptureScreen()` says if there is one) |
 | `picture.js` | `svgPicture(svg, options)`: a PNG-ready canvas of an SVG as it looks now. `embedFonts({stylesheet, family, unicode})`: web fonts inlined for it, from a stylesheet on Google Fonts or the app's own (`unicode` picks subsets by `unicode-range`; by default Latin and Latin Extended, see "The pictures"; rules without one are always kept). `fontFaces(css, family, unicode)`: the rules it keeps |
 | `sketch.js` | `createSketch(canvas)`: drawing on a picture |
-| `strings.js` | every text the kit shows or writes, in English and Czech (`STRINGS`); `texts(language, strings)` picks them, `format(template, values)` fills one in |
-| `issue.js` | `issueUrl(issue)`: the new-issue address on GitHub or GitLab, kept under the length limit. `issueTarget(options)`: checks `provider`, `host`, `repo`, `urlLimit` and `labels`. No DOM, so it runs in Node |
+| `strings.js` | every text the kit shows or writes, in English and Czech (`STRINGS`); `texts(language, strings)` picks them, `format(template, values)` fills one in, `listOf(items, language)` joins names as the language does |
+| `issue.js` | `issueUrl(issue)`: the new-issue address on GitHub or GitLab, kept under the length limit, and which sections gave way to fit (`{url, shortened, gaveWay}`). `issueTarget(options)`: checks `provider`, `host`, `repo`, `urlLimit` and `labels`. No DOM, so it runs in Node |
 | `feedback-kit.css` | the panel; themed with `--fk-*` custom properties |
 
 ## Using it
@@ -69,7 +69,7 @@ The issue body has these parts, in order:
 - your `sections`;
 - an "On screen" table: your `rows`, then the screen, theme, browser and page.
 
-If the address would be longer than `urlLimit` (8000 characters by default; GitHub accepts about 8 KB), sections give way to their `fallback` text, the longest first, until it fits.
+If the address would be longer than `urlLimit` (8000 characters by default; GitHub accepts about 8 KB), sections give way to their `fallback` text, the longest first, until it fits. The panel then names them by heading ("Too long to put in the issue: Reopen. It has a shorter note in its place, so add that part by hand if it matters."). `issueUrl(issue)` returns `{url, shortened, gaveWay}`: `shortened` is true when a section gave way, and `gaveWay` lists their headings, in the order they are in the issue.
 
 ### GitHub or GitLab
 
@@ -110,7 +110,7 @@ createFeedback({
 });
 ```
 
-- `language: 'cs'` makes every text Czech: "Napsat hlášení na GitHub", "Zpět", "Vymazat", the messages under the picture, the pens' names, the issue's headings ("Co je špatně a co by se mělo stát", "Obrázek", "Na obrazovce") and the device's rows ("Obrazovka: 1180 × 820 px, na šířku, poměr pixelů 2, světlý režim"). Only the browser's user agent stays as the browser gives it. The panel gets `lang="cs"`.
+- `language: 'cs'` makes every text Czech: "Napsat hlášení na GitHub", "Zpět", "Vymazat", the messages under the picture, the pens' names, the issue's headings ("Co je špatně a co by se mělo stát", "Snímek obrazovky", "Na obrazovce") and the device's rows ("Obrazovka: 1180 × 820 px, na šířku, poměr pixelů 2, světlý režim"). Only the browser's user agent stays as the browser gives it. The panel gets `lang="cs"`.
 - The default `heading` ("Poslat zpětnou vazbu") and `pictureLabel` ("Jen tato část") follow the language; if you give them, yours win. What `describe` gives (subtitle, title, rows, sections) and `footer` are yours, so write them in the same language.
 - `strings` changes single texts: `{key: text}`, with the keys of `STRINGS.en` in `strings.js`. An unknown key throws, so a typo shows at once.
 - **Another language**: give its code and all its texts in `strings` (`language: 'de', strings: {...}`); what you leave out is English. Better still, add it to `strings.js` in web-kit, where a test checks that every language has every key.
