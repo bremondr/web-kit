@@ -19,7 +19,7 @@ It began in [Ultimate Playbook](https://github.com/bremondr/ultimate-playbook) b
 |---|---|
 | `kit.js` | `createFeedback(options)`: the panel, the clipboard, Share and Save, the device's rows in the issue |
 | `page.js` | `pagePicture(element, options)`: a picture of the whole page (or of one element), redrawn from what is on screen. `screenPicture(options)`: a real screenshot from the browser's screen capture, on desktop browsers (`canCaptureScreen()` says if there is one) |
-| `picture.js` | `svgPicture(svg, options)`: a PNG-ready canvas of an SVG as it looks now. `embedFonts({stylesheet, family, unicode})`: web fonts inlined for it, from a stylesheet on Google Fonts or the app's own (`unicode` picks subsets by `unicode-range`, Latin by default; rules without one are always kept) |
+| `picture.js` | `svgPicture(svg, options)`: a PNG-ready canvas of an SVG as it looks now. `embedFonts({stylesheet, family, unicode})`: web fonts inlined for it, from a stylesheet on Google Fonts or the app's own (`unicode` picks subsets by `unicode-range`; by default Latin and Latin Extended, see "The pictures"; rules without one are always kept). `fontFaces(css, family, unicode)`: the rules it keeps |
 | `sketch.js` | `createSketch(canvas)`: drawing on a picture |
 | `strings.js` | every text the kit shows or writes, in English and Czech (`STRINGS`); `texts(language, strings)` picks them, `format(template, values)` fills one in |
 | `issue.js` | `issueUrl(issue)`: the new-issue address on GitHub or GitLab, kept under the length limit. `issueTarget(options)`: checks `provider`, `host`, `repo`, `urlLimit` and `labels`. No DOM, so it runs in Node |
@@ -123,6 +123,8 @@ Both are taken in the tap, so they show the same moment.
 - **The whole page** comes first. `pagePicture` copies the page with every computed style written inline and draws the copy, in every browser, with no prompt. The `page` option is passed to it:
   - `area`: `'screen'` (default) for what is visible, like a screenshot, or `'full'` for the whole scrollable page;
   - `fonts`: web fonts the page uses, through `embedFonts`, or the picture falls back to other fonts;
+
+    `embedFonts` keeps the `@font-face` rules of the family whose `unicode-range` matches `unicode`, a regular expression tested on the rule. The default, `LATIN`, keeps the rules with a range that starts at U+0000 or U+0100: Google Fonts' `latin` (`U+0000-00FF, …`) and `latin-ext` (`U+0100-02BA, …`) subsets, which together cover Latin Extended-A and -B, so Czech, Slovak, Polish and the like (ě š č ř ž ů ł ő …) are drawn in the font. Cyrillic, Greek, Vietnamese and other subsets are left out. To keep others, give `unicode`, for example `/U\+0*(?:0|100|400)-/i` for Cyrillic too, or `/U\+0000-00FF/i` for basic Latin only, which was the default before 2.2.0. A rule without a `unicode-range`, as is usual for a self-hosted font, covers every character and is always kept.
   - `element`: picture one element instead of the page; `maxSize`: the longer side in pixels, at most (default 2400); `background`.
   
   It keeps what is typed in fields, where scrolled areas are scrolled to, fixed and sticky parts where they are, canvases, and `::before`/`::after`. Give `data-fk-skip` to anything that shouldn't be in it; the panel has it. See Limits for what it can't copy.
