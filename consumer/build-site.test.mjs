@@ -42,7 +42,8 @@ test('patterns: names anywhere, folders, and from the root', () => {
 });
 
 test('the site\'s files: everything but the usual non-site files, or just "paths"', () => {
-  const all = ['index.html', 'README.md', 'tools/build-site.mjs', 'js/a.js', 'js/a.test.mjs', 'site.json', '.github/workflows/x.yml', 'consumer/x.mjs', 'docs/a.md'];
+  const all = ['index.html', 'README.md', 'tools/build-site.mjs', 'js/a.js', 'js/a.test.mjs', 'site.json', '.github/workflows/x.yml', 'consumer/x.mjs', 'docs/a.md',
+    '.claude/skills/localize/SKILL.md', '.claude/settings.json'];
   assert.deepEqual(siteFiles(all, readConfig({exclude: ['/consumer/']})), ['index.html', 'js/a.js']);
   assert.deepEqual(siteFiles(['index.html', 'js/a.js', 'js/a.test.mjs'], readConfig({paths: ['index.html', 'js']})), ['index.html', 'js/a.js', 'js/a.test.mjs']);
 });

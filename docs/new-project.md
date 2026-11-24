@@ -20,8 +20,9 @@ A new static web app can start with everything Ultimate Playbook and Protogames 
 | `.nojekyll`, `.gitignore` | files served as they are; the build's output not committed | `template/` |
 | `tools/build-site.mjs`, `tools/preview-runtime.js`, `.github/workflows/pages.yml` | the site and the previews | `consumer/` |
 | `tools/update-vendor.mjs`, `.github/workflows/update-vendor.yml` | module updates | `consumer/` |
+| `.claude/skills/localize/` | a Claude Code skill for translating the app (Czech first): the texts in one keyed file, tests that none is missing or left untranslated, checks for longer words at iPad and phone sizes, and a review of every text by the owner on a claude.ai page | web-kit's `.claude/skills/` |
 
-The template keeps no copies of the consumer files: `tools/new-project.mjs` takes them from `consumer/` when it makes the project, so they are always the newest. (A test fails if a copy appears in `template/`.) `{{TITLE}}`, `{{REPO}}` and `{{PAGES_URL}}` in the template are filled in.
+The template keeps no copies of the consumer files: `tools/new-project.mjs` takes them from `consumer/` when it makes the project, so they are always the newest. (A test fails if a copy appears in `template/`.) The same goes for the skills: they are copied from web-kit's own `.claude/skills/`, which sessions working on web-kit use too. The site build never publishes `.claude/`. `{{TITLE}}`, `{{REPO}}` and `{{PAGES_URL}}` in the template are filled in.
 
 ## 1. Make the project folder
 

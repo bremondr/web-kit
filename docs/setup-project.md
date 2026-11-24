@@ -72,6 +72,16 @@ versions in `vendor.json`. Don't edit them here: change the module in web-kit, r
 `node tools/update-vendor.mjs` (or wait for the daily "Update vendored modules" pull request).
 ```
 
+### Claude Code skills from web-kit
+
+web-kit keeps Claude Code skills that its projects share in [`.claude/skills/`](../.claude/skills/): [`localize`](../.claude/skills/localize/SKILL.md) translates an app or a module (Czech first), the way feedback-kit's Czech texts were done, with a review of every text by the owner. New projects get them from the template. In an existing project, copy the folder as it is, from a clone of web-kit:
+
+```sh
+mkdir -p .claude/skills && cp -R ../web-kit/.claude/skills/localize .claude/skills/
+```
+
+Claude Code finds it there in the next session. The site build never publishes `.claude/`. Like the consumer files, the copy doesn't update itself: copy it again when web-kit's changes.
+
 ## 6. Give the workflow a token: `VENDOR_PR_TOKEN`
 
 The workflow opens a pull request for each update. With the workflow's own token, GitHub doesn't run other workflows (tests, previews) for that pull request, and by default doesn't let it open pull requests at all. So give it a token of its own:
