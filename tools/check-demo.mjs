@@ -5,6 +5,7 @@
    picture, both keep the chart's CSS variables and classes, a stroke can be drawn and undone, the person's own
    screenshot can be chosen, pasted or dropped instead, a (faked) real screen capture works with the button and at the
    tap and leaves the panel out, the whole scrollable page can be pictured, and the issue link is filled in (also with the Reopen link too long, so the fallback is used).
+   With GitLab chosen, the link goes to the example GitLab server, with the label as a /label line and GitLab named in the panel.
    On the git-store-kit page (against its fake GitHub): the public repo loads without a token and the private one
    asks for one; a token pasted in the panel opens it; publishing sends one commit; a change made elsewhere brings up
    the conflict question, and each answer works; an item's history lists its versions and opens and restores one;
@@ -340,6 +341,35 @@ async function checkFeedback(page, where, scheme, size) {
   if (Math.abs(tall[0] - tall[1]) > 0.02) fail(where, `the whole page's picture is ${tall[0].toFixed(2)} high for 1 wide, the page ${tall[1].toFixed(2)}`);
   await page.click('.fk-x');
   await page.uncheck('#full-page');
+
+  // GitLab: the same panel, with an address on the example self-hosted server (nested groups, a path), the label as a
+  // /label line, and the provider's name in the button and the note. This makes a second panel, so it comes last
+  await page.check('input[name=provider][value=gitlab]');
+  if (!(await page.locator('#where-gitlab').isVisible()) || await page.locator('#where-github').isVisible()) fail(where, 'the page does not say where GitLab issues go');
+  await page.click('#feedback');
+  const open = page.locator('.fk:not([hidden])');
+  await open.locator('.fk-wait').waitFor({ state: 'hidden', timeout: 5000 }).catch(() => fail(where, 'GitLab: no picture in the panel'));
+  await page.waitForFunction(() => !/^Making/.test(document.querySelector('.fk:not([hidden]) .fk-status').textContent), null, { timeout: 5000 }).catch(() => {});
+  await page.waitForFunction(() => document.querySelector('.fk:not([hidden]) .fk-primary')?.href, null, { timeout: 5000 }).catch(() => {});
+  const gl = await issueOf(page);
+  if (!gl) fail(where, 'GitLab: the issue link was not filled in');
+  else {
+    const start = 'https://gitlab.example.com/gitlab/demo-group/feedback/demo-app/-/issues/new?issue%5Btitle%5D=';
+    if (!gl.url.startsWith(start)) fail(where, `GitLab: the issue goes to ${gl.url.slice(0, 90)}`);
+    const q = new URL(gl.url).searchParams, body = q.get('issue[description]') || '';
+    if (!/^Demo feedback: \w+day$/.test(q.get('issue[title]'))) fail(where, `GitLab: the issue's title is "${q.get('issue[title]')}"`);
+    if (q.get('labels') !== null || q.get('title') !== null || q.get('body') !== null) fail(where, 'GitLab: the address has GitHub\'s fields');
+    if (!body.endsWith('<sub>Sent from the feedback-kit demo page in web-kit.</sub>\n\n/label ~demo')) fail(where, `GitLab: the description ends with "${body.slice(-60)}"`);
+    for (const part of ['## Reopen', '/demo/feedback-kit.html#day=', '| Day |', '| Screen |']) if (!body.includes(part)) fail(where, `GitLab: the description has no "${part}"`);
+    if (gl.url.length > 8000) fail(where, `GitLab: the issue link is ${gl.url.length} characters long`);
+  }
+  const button = await open.locator('.fk-primary').textContent();
+  if (button !== 'Write the issue on GitLab') fail(where, `GitLab: the button says "${button}"`);
+  if (!(await open.locator('.fk-note', { hasText: 'The issue opens on GitLab' }).count())) fail(where, 'GitLab: the panel\'s note does not name GitLab');
+  if ((await open.innerText()).includes('GitHub')) fail(where, 'GitLab: the panel mentions GitHub');
+  if (shots) await page.screenshot({ path: join(shots, `feedback-panel-gitlab-${size}-${scheme}.png`) });
+  await open.locator('.fk-x').click();
+  await page.check('input[name=provider][value=github]');
 }
 
 async function checkGitStore(page, where, scheme, size) {
@@ -524,10 +554,10 @@ async function checkGitStore(page, where, scheme, size) {
 
 async function issueOf(page) {
   return page.evaluate(() => {
-    const a = document.querySelector('.fk-primary');
+    const a = document.querySelector('.fk:not([hidden]) .fk-primary') || document.querySelector('.fk-primary');
     if (!a.href) return null;
     const q = new URL(a.href).searchParams;
-    const note = [...document.querySelectorAll('.fk-side .fk-note')].find(n => /too long/.test(n.textContent));
+    const note = [...document.querySelectorAll('.fk:not([hidden]) .fk-side .fk-note')].find(n => /too long/.test(n.textContent));
     return { url: a.href, title: q.get('title'), labels: q.get('labels'), body: q.get('body'), shortened: !!note && !note.hidden };
   });
 }

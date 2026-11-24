@@ -163,6 +163,8 @@ If something needs a change in the module, don't work around it here: describe i
 bremondr/web-kit and tell me.
 ```
 
+feedback-kit 2.1.0 adds GitLab (`provider`, `host`, `urlLimit`); a project on GitHub needs no change.
+
 For feedback-kit 2.0.0 (whole-page picture, own screenshot, screen capture), "What to change" covers: `page.js` in the service worker's list, `page: {fonts}` and `area`, a `pictureLabel` for the app's own `picture` (or removing it), and `data-fk-skip`.
 
 ## Adding previews to a project
@@ -209,6 +211,8 @@ For Protogames (landing page at the root, the editor in `app/`, no analytics in 
 ```
 
 Keep `commentMarker` the same as the old workflow's, so the bot updates the comments already on open pull requests instead of adding new ones. A service worker named in `serviceWorker` must have `const VERSION = '…';` and a `const APP_FILES = [ … ];` list (closing `];` on a line of its own): the build fills both in from what is published, so nobody bumps them by hand.
+
+The preview files are for GitHub only: they run as GitHub Actions and publish to GitHub Pages, `build-site.mjs` links each preview to its GitHub pull request, and the badge's Feedback link (`feedback` in `site.json`) falls back to a GitHub new-issue address. feedback-kit itself can send issues to GitLab (its `provider` option), and a page that opens its own panel from the badge's event uses whatever the panel is set to; only the badge's plain fallback link stays on GitHub.
 
 **3. Ignore the build's output** in `.gitignore`: `_site/`, `previews.json`, `build-summary.json`.
 
