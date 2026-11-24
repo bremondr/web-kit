@@ -91,7 +91,7 @@ test('Czech: the issue has no English left, apart from the browser’s user agen
   for (const provider of ['github', 'gitlab']){
     const q = new URL(issueUrl({...it, provider, repo: 'o/r'}).url).searchParams;
     const body = q.get(provider === 'github' ? 'body' : 'issue[description]');
-    assert.ok(body.startsWith('## Co je špatně a co by se mělo stát\n\n\n\n## Obrázek\n\n<!-- Obrázek je zkopírovaný: vložte ho sem, nebo přiložte uložený obrázek. -->'), body.slice(0, 120));
+    assert.ok(body.startsWith('## Co je špatně a co by se mělo stát\n\n\n\n## Snímek obrazovky\n\n<!-- Snímek obrazovky je zkopírovaný: vložte ho sem, nebo přiložte uložený soubor. -->'), body.slice(0, 120));
     assert.ok(body.includes('\n## Na obrazovce\n\n| | |\n|---|---|\n| Den | úterý |\n| Obrazovka | 1180 × 820 px, na šířku,'));
     const kit = body.replace(UA, '').replace('/label ~feedback', '').replace(/https:\/\/[^\s)|]+/g, '');   // and the addresses
     // no English text of the kit's, and no English word from any of them (a few are the same in both: px, PNG, …)

@@ -453,7 +453,7 @@ async function checkFeedback(page, where, scheme, size) {
   if (!csIssue) fail(where, 'Czech: the issue link was not filled in');
   else {
     if (!/^Zpětná vazba z ukázky: \p{L}+$/u.test(csIssue.title)) fail(where, `Czech: the issue's title is "${csIssue.title}"`);
-    for (const part of ['## Co je špatně a co by se mělo stát', '## Obrázek', '## Znovu otevřít', '## Na obrazovce', '| Obrazovka |', '| Prohlížeč |', '| Stránka |', ...(size === 'desktop' ? ['| Okno |'] : [])])
+    for (const part of ['## Co je špatně a co by se mělo stát', '## Snímek obrazovky', '## Znovu otevřít', '## Na obrazovce', '| Obrazovka |', '| Prohlížeč |', '| Stránka |', ...(size === 'desktop' ? ['| Okno |'] : [])])
       if (!csIssue.body.includes(part)) fail(where, `Czech: the issue's body has no "${part}"`);
     const ua = await page.evaluate(() => navigator.userAgent);
     for (const text of englishIn(csIssue.body.replace(ua, '').replace(/https?:\/\/[^\s)|]+/g, ''))) fail(where, `Czech: the issue has English in it: "${text}"`);
