@@ -13,6 +13,13 @@ The panel and the issue in another language: Czech is built in.
 
 Without `language`, the panel and the issue are exactly as before. **What to change in a project:** add `strings.js` to the service worker's list of files, if there is one (`kit.js` imports it). Set `language: 'cs'` for a Czech app, and remove the `heading` and `pictureLabel` that only translated the defaults.
 
+## 2.1.1 (2026-11-24)
+
+- **The picture fits the panel on upright screens** (iPad portrait, phones): a tall picture is scaled down to fit the picture area instead of being cut off at the bottom. Drawing still lands under the finger (#13).
+- **No scrollbars in the whole page's picture where the screen shows none:** an element that scrolls, such as a row of buttons that scrolls sideways, was drawn with classic scrollbars that cut off its content, even where the screen has overlay scrollbars (iPad, phones, macOS) or none. Where the screen does show classic scrollbars (Windows), the picture keeps them (#14).
+
+Nothing to change in a project.
+
 ## 2.1.0 (2026-11-24)
 
 GitLab, including a self-hosted server, as well as GitHub.

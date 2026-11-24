@@ -29,6 +29,7 @@ function draw(){
     el('text', {class: 'axis', x: 690, y: y(avg) - 8, 'text-anchor': 'end'}, `average ${avg.toFixed(1)}`)
   );
   $('picked').textContent = DAYS[day];
+  for (const b of $('days').children) b.setAttribute('aria-pressed', String(+b.dataset.day === day));
   $('earlier').disabled = day === 0;
   $('later').disabled = day === DAYS.length - 1;
 }
@@ -38,6 +39,13 @@ function pick(k){
   history.replaceState(null, '', `#day=${day + 1}`);
   draw();
 }
+// the days again as a row of buttons that scrolls sideways (wider than the chart at every size)
+$('days').replaceChildren(...DAYS.map((name, k) => {
+  const b = Object.assign(document.createElement('button'), {type: 'button', className: 'btn', textContent: `${name}: ${TRIES[k]} tries`});
+  b.dataset.day = k;
+  b.addEventListener('click', () => pick(k));
+  return b;
+}));
 $('earlier').addEventListener('click', () => pick(day - 1));
 $('later').addEventListener('click', () => pick(day + 1));
 addEventListener('hashchange', () => { const d = parseInt(new URLSearchParams(location.hash.slice(1)).get('day'), 10); if (d >= 1 && d <= 7) pick(d - 1); });

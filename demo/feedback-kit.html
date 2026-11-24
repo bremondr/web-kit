@@ -37,6 +37,13 @@
   .controls .picked{min-width:9ch;text-align:center;font-weight:600}
   .controls .primary{margin-left:auto}
   @media (max-width:520px){ .controls .primary{margin-left:0;flex-basis:100%} }
+  /* a row that scrolls sideways, as tool rails do in apps. Its scrollbar takes no space on screen with overlay
+     scrollbars (iPad, phones, macOS) and in headless browsers, so the whole page's picture shows none either */
+  :root{--demo-row:#cfe8d6}
+  @media (prefers-color-scheme: dark){ :root{--demo-row:#123d24} }
+  .days{display:flex;gap:8px;overflow-x:auto;margin-top:12px;padding:8px;border-radius:10px;background:var(--demo-row)}
+  .days .btn{flex:none;min-width:150px}
+  .days .btn[aria-pressed="true"]{font-weight:700}
   .option+.option{margin-top:10px}
   .modes{border:1px solid var(--demo-rule);border-radius:10px;margin:12px 0;padding:8px 12px 12px}
   .modes legend{padding:0 4px;color:var(--demo-muted)}
@@ -91,6 +98,7 @@
         <button class="btn" type="button" id="later" aria-label="Later day">Later ›</button>
         <button class="btn primary" type="button" id="feedback">Send feedback</button>
       </div>
+      <div class="days" id="days" role="group" aria-label="Days (scrolls sideways)"></div>
     </section>
 
     <aside class="stack">
@@ -103,6 +111,8 @@
           <li>Draw with a finger, the Pencil or the mouse; Undo (or Ctrl/Cmd+Z) and Clear.</li>
           <li>Take a screenshot yourself, then paste it, drop it on the panel, or choose it with "Use my screenshot…".</li>
           <li>In a desktop browser, "Take a real screenshot" asks to share this tab and takes an exact picture.</li>
+          <li>The row of days under the chart scrolls sideways. Where the screen shows no scrollbar there (iPad,
+            phones, macOS), neither does the picture.</li>
           <li>Switch the language to Czech: every text in the panel and in the issue is Czech then, except the browser's
             user agent.</li>
           <li>Try it in light and dark mode, and upright and sideways on the iPad.</li>
