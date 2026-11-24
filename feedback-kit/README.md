@@ -110,7 +110,7 @@ createFeedback({
 });
 ```
 
-- `language: 'cs'` makes every text Czech: "Napsat hlášení na GitHub", "Zpět", "Vymazat", the messages under the picture, the pens' names, the issue's headings ("Co je špatně a co by se mělo stát", "Obrázek", "Na obrazovce") and the device's rows ("Obrazovka: 1180 × 820 px, na šířku, poměr pixelů 2, světlý režim"). Only the browser's user agent stays as the browser gives it. The panel gets `lang="cs"`.
+- `language: 'cs'` makes every text Czech: "Napsat hlášení na GitHub", "Zpět", "Vymazat", the messages under the picture, the pens' names, the issue's headings ("Co je špatně a co by se mělo stát", "Snímek obrazovky", "Na obrazovce") and the device's rows ("Obrazovka: 1180 × 820 px, na šířku, poměr pixelů 2, světlý režim"). Only the browser's user agent stays as the browser gives it. The panel gets `lang="cs"`.
 - The default `heading` ("Poslat zpětnou vazbu") and `pictureLabel` ("Jen tato část") follow the language; if you give them, yours win. What `describe` gives (subtitle, title, rows, sections) and `footer` are yours, so write them in the same language.
 - `strings` changes single texts: `{key: text}`, with the keys of `STRINGS.en` in `strings.js`. An unknown key throws, so a typo shows at once.
 - **Another language**: give its code and all its texts in `strings` (`language: 'de', strings: {...}`); what you leave out is English. Better still, add it to `strings.js` in web-kit, where a test checks that every language has every key.
