@@ -53,8 +53,13 @@ fonts.then(css => {
   $('font-status').textContent = css.includes('data:') ? `Bungee, inlined, ${Math.round(css.length / 1024)} KB` : 'Bungee could not be inlined';
 });
 
-const feedback = createFeedback({
-  repo: 'bremondr/web-kit',
+// the same kit for GitHub (this repository) and for GitLab (a server that doesn't exist, so nothing goes anywhere);
+// a project makes one, with its own repo
+const TARGETS = {
+  github: {repo: 'bremondr/web-kit'},
+  gitlab: {provider: 'gitlab', host: 'https://gitlab.example.com/gitlab', repo: 'demo-group/feedback/demo-app'}
+};
+const options = {
   labels: ['demo'],
   footer: 'Sent from the feedback-kit demo page in web-kit.',
   // the whole page first; its area is read at each tap, so the checkbox works without making the kit again
@@ -67,7 +72,7 @@ const feedback = createFeedback({
   describe: () => {
     const name = DAYS[day], tries = TRIES[day];
     let reopen = `${location.origin}${location.pathname}#day=${day + 1}`;
-    if ($('long-link').checked) reopen += '&padding=' + 'x'.repeat(9000);   // longer than GitHub accepts
+    if ($('long-link').checked) reopen += '&padding=' + 'x'.repeat(9000);   // longer than GitHub or GitLab accepts
     return {
       subtitle: `Tries per day, ${name}`,
       fileName: `feedback-demo-${name.toLowerCase()}.png`,
@@ -79,5 +84,10 @@ const feedback = createFeedback({
       }), 100))
     };
   }
+};
+const kits = Object.fromEntries(Object.entries(TARGETS).map(([name, target]) => [name, createFeedback({...target, ...options})]));
+const provider = () => document.querySelector('input[name=provider]:checked').value;
+for (const radio of document.querySelectorAll('input[name=provider]')) radio.addEventListener('change', () => {
+  for (const name of Object.keys(TARGETS)) $(`where-${name}`).hidden = name !== provider();
 });
-$('feedback').addEventListener('click', feedback.open);
+$('feedback').addEventListener('click', () => kits[provider()].open());

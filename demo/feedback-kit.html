@@ -62,7 +62,7 @@
 <main class="page">
   <h1>feedback-kit</h1>
   <p class="lead">Tap <strong>Send feedback</strong>: the panel shows a picture of the page as it is now, to draw on,
-    and links to a new issue filled in with what was on screen. <strong>Just the chart</strong> switches to the
+    and links to a new issue on GitHub or GitLab, filled in with what was on screen. <strong>Just the chart</strong> switches to the
     picture this page gives of its own part. The module comes from <code>../feedback-kit/</code>, the branch this page
     was served from.</p>
 
@@ -108,8 +108,17 @@
       </section>
       <section class="card">
         <h2>The issue</h2>
-        <p class="small">It opens in <a href="https://github.com/bremondr/web-kit/issues">bremondr/web-kit</a> with the
+        <fieldset class="modes small">
+          <legend>Where the issue goes</legend>
+          <label class="option"><input type="radio" name="provider" value="github" checked><span>GitHub</span></label>
+          <label class="option"><input type="radio" name="provider" value="gitlab"><span>GitLab (an example server)</span></label>
+        </fieldset>
+        <p class="small" id="where-github">It opens in <a href="https://github.com/bremondr/web-kit/issues">bremondr/web-kit</a> with the
           <code>demo</code> label. It is a real issue: submit it only if you mean to, and close it afterwards.</p>
+        <p class="small" id="where-gitlab" hidden>It opens on <code>https://gitlab.example.com/gitlab</code>, in the project
+          <code>demo-group/feedback/demo-app</code>, with the <code>demo</code> label as a <code>/label</code> line. That
+          server doesn't exist, so nothing is sent anywhere: the link only shows the address the kit makes for a
+          self-hosted GitLab with nested groups.</p>
         <fieldset class="modes small">
           <legend>Real screen capture (desktop browsers)</legend>
           <label class="option"><input type="radio" name="capture" value="button" checked><span>A button in the panel</span></label>
