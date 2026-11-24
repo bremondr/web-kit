@@ -74,6 +74,17 @@ function pixels(source, w, h){
   } catch (e){ return ''; }
 }
 
+// a scrolling element whose scrollbars take no space on screen: overlay ones (iPad, phones, macOS) or hidden ones.
+// The copy would draw classic ones, which take space and cut off the content, so it gets none either. Where the
+// screen does show classic scrollbars (Windows), the copy keeps them. (Sizes are whole pixels, hence the 2.)
+function noScrollbarSpace(src, v){
+  if (!/auto|scroll/.test(v['overflow-x'] + v['overflow-y']) || !(src instanceof HTMLElement)) return false;
+  const px = p => parseFloat(v[p]) || 0;
+  const across = src.offsetWidth - src.clientWidth - px('border-left-width') - px('border-right-width');
+  const down = src.offsetHeight - src.clientHeight - px('border-top-width') - px('border-bottom-width');
+  return across < 2 && down < 2;
+}
+
 function copySvg(svg, box){
   const copy = svg.cloneNode(true), from = [svg, ...svg.querySelectorAll('*')], to = [copy, ...copy.querySelectorAll('*')];
   from.forEach((e, k) => {
@@ -124,6 +135,10 @@ function snapshot(root, {fixSticky}){
       } else if (tag === 'option'){ if (src.selected) el.setAttribute('selected', ''); else el.removeAttribute('selected'); }
     }
     el.setAttribute('style', box);
+    if (noScrollbarSpace(src, v)){
+      el.style.setProperty('scrollbar-width', 'none');
+      el.classList.add('fk-nobar');   // the same for Safari before 18.2, which has no scrollbar-width (rule below)
+    }
     for (const which of ['::before', '::after']){
       const ps = getComputedStyle(src, which), content = ps.getPropertyValue('content');
       if (content && content !== 'none' && content !== 'normal'){
@@ -152,6 +167,7 @@ function snapshot(root, {fixSticky}){
     }
     return el;
   }
+  rules.push('.fk-nobar::-webkit-scrollbar{display:none}');
   try {
     return {copy: walk(root, null), rules};
   } finally { defaults.done(); }

@@ -2,7 +2,9 @@
 /* Drives the demo pages (demo/) in a headless browser with Playwright, at desktop, iPad and phone sizes, in light and
    dark mode: no page errors, no console errors, no failed requests, nothing wider than the screen. On the
    feedback-kit page the panel opens with a picture of the whole page, "Just the chart" switches to the chart's own
-   picture, both keep the chart's CSS variables and classes, a stroke can be drawn and undone, the person's own
+   picture, both keep the chart's CSS variables and classes, each picture fits the picture area (also the tall picture of
+   the whole scrollable page, where a tap draws right under it), the row that scrolls sideways has no scrollbar in the
+   picture when the screen shows none, a stroke can be drawn and undone, the person's own
    screenshot can be chosen, pasted or dropped instead, a (faked) real screen capture works with the button and at the
    tap and leaves the panel out, the whole scrollable page can be pictured, and the issue link is filled in (also with the Reopen link too long, so the fallback is used).
    With GitLab chosen, the link goes to the example GitLab server, with the label as a /label line and GitLab named in the panel.
@@ -39,8 +41,8 @@ if (shots) mkdirSync(shots, { recursive: true });
 const SIZES = [['desktop', 1440, 900], ['ipad-landscape', 1180, 820], ['ipad-portrait', 820, 1180], ['phone', 390, 844]];
 const SCHEMES = ['light', 'dark'];
 const COLORS = {   // as set in demo/feedback-kit.html
-  light: { pick: '#e8590c', skyTop: '#8ec5ff' },
-  dark: { pick: '#ffb347', skyTop: '#0b1f3a' }
+  light: { pick: '#e8590c', skyTop: '#8ec5ff', row: '#cfe8d6' },
+  dark: { pick: '#ffb347', skyTop: '#0b1f3a', row: '#123d24' }
 };
 
 // a static server for the repository's root
@@ -110,7 +112,12 @@ async function checkFeedback(page, where, scheme, size) {
     const top = document.querySelector('.topbar').getBoundingClientRect();
     const W = document.documentElement.clientWidth, H = document.documentElement.clientHeight;
     const barAt = [bar.left + bar.width / 2, bar.bottom - 6];
+    // the row of days that scrolls sideways: just above its bottom edge, under the buttons, where a classic
+    // scrollbar would be; and whether its scrollbar takes space on this screen
+    const days = document.getElementById('days'), row = days.getBoundingClientRect();
     return {
+      row: [(row.left + 40) / W, (row.bottom - 3) / H], rowOnScreen: row.bottom <= H,
+      rowBar: days.offsetHeight - days.clientHeight, rowScrolls: days.scrollWidth > days.clientWidth,
       scrolled: scrollY > 0, stuck: Math.abs(top.top) < 1,
       pageBar: [barAt[0] / W, barAt[1] / H], pageTopbar: [0.5, (top.top + top.height / 2) / H],
       bar: [(barAt[0] - svg.left) / svg.width, (barAt[1] - svg.top) / svg.height], sky: [0.5, 0.01]
@@ -142,6 +149,14 @@ async function checkFeedback(page, where, scheme, size) {
     const c = document.querySelector('.fk-canvas');
     return [...c.getContext('2d').getImageData(Math.round(fx * (c.width - 1)), Math.round(fy * (c.height - 1)), 1, 1).data].slice(0, 3);
   }, [fx, fy]);
+  // the whole picture shows in the picture area: scaled to fit, not cut off (issue #13)
+  const fits = async what => {
+    const [c, a] = await page.evaluate(() => [document.querySelector('.fk:not([hidden]) .fk-canvas'), document.querySelector('.fk:not([hidden]) .fk-stage')]
+      .map(e => { const r = e.getBoundingClientRect(); return [r.left, r.top, r.right, r.bottom]; }));
+    if (c[2] - c[0] < 10 || c[3] - c[1] < 10) fail(where, `${what}: the picture is ${Math.round(c[2] - c[0])} × ${Math.round(c[3] - c[1])} px on screen`);
+    else if (c[0] < a[0] - 1 || c[1] < a[1] - 1 || c[2] > a[2] + 1 || c[3] > a[3] + 1)
+      fail(where, `${what}: the picture (${Math.round(c[2] - c[0])} × ${Math.round(c[3] - c[1])} px) does not fit the picture area (${Math.round(a[2] - a[0])} × ${Math.round(a[3] - a[1])} px)`);
+  };
   // the picture is ready, and the message under it says whether it was copied
   const ready = async () => {
     await page.locator('.fk-wait').waitFor({ state: 'hidden', timeout: 5000 });
@@ -158,6 +173,14 @@ async function checkFeedback(page, where, scheme, size) {
   if (!near(pageBar, hex(COLORS[scheme].pick))) fail(where, `the picked bar is rgb(${pageBar}) in the page's picture, not ${COLORS[scheme].pick}`);
   const topbar = await pixel(spots.pageTopbar);
   if (near(topbar, hex(COLORS[scheme].pick), 40)) fail(where, 'the sticky bar is not at the top of the page\'s picture');
+  await fits('the whole page');
+  // no scrollbar in the picture where the screen shows none (issue #14)
+  if (!spots.rowScrolls || !spots.rowOnScreen) fail(where, 'the row of days does not scroll sideways on screen (the check needs that)');
+  else if (spots.rowBar > 0) console.log(`${where}: the row of days shows a ${spots.rowBar} px scrollbar on this screen, so its picture keeps it; not checked`);
+  else {
+    const rowPx = await pixel(spots.row);
+    if (!near(rowPx, hex(COLORS[scheme].row), 12)) fail(where, `the row of days has a scrollbar in the page's picture, not on screen (rgb(${rowPx}) at its bottom, not ${COLORS[scheme].row})`);
+  }
   if (shots) await page.screenshot({ path: join(shots, `feedback-page-${size}-${scheme}.png`) });
 
   // the Share button shows only where the browser can share the picture
@@ -175,6 +198,7 @@ async function checkFeedback(page, where, scheme, size) {
   const bar = await pixel(spots.bar), sky = await pixel(spots.sky);
   if (!near(bar, hex(COLORS[scheme].pick))) fail(where, `the picked bar is rgb(${bar}) in the picture, not ${COLORS[scheme].pick}`);
   if (!near(sky, hex(COLORS[scheme].skyTop))) fail(where, `the sky is rgb(${sky}) in the picture, not ${COLORS[scheme].skyTop}`);
+  await fits('the chart');
 
   // a stroke across the picture, then Undo
   const box = await page.locator('.fk-canvas').boundingBox();
@@ -339,6 +363,27 @@ async function checkFeedback(page, where, scheme, size) {
   await ready().catch(() => fail(where, 'no picture of the whole scrollable page'));
   const tall = await page.evaluate(() => { const c = document.querySelector('.fk-canvas'), d = document.documentElement; return [c.height / c.width, d.scrollHeight / d.clientWidth]; });
   if (Math.abs(tall[0] - tall[1]) > 0.02) fail(where, `the whole page's picture is ${tall[0].toFixed(2)} high for 1 wide, the page ${tall[1].toFixed(2)}`);
+  await fits('the whole scrollable page');
+  // a tap on this tall, scaled-down picture draws a dot right under it: within a screen pixel, because touch
+  // points can be rounded to whole pixels (WebKit), and the dot is smaller than that here
+  {
+    const b = await page.locator('.fk-canvas').boundingBox();
+    const at = [Math.round(b.x + b.width * 0.55), Math.round(b.y + b.height * 0.35)];
+    if (await page.evaluate(() => matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0)) await page.touchscreen.tap(...at);
+    else await page.mouse.click(...at);
+    const dot = await page.evaluate(([x, y, pen]) => {
+      const c = document.querySelector('.fk:not([hidden]) .fk-canvas'), r = c.getBoundingClientRect(), k = c.width / r.width;
+      const cx = (x - r.left) * k, cy = (y - r.top) * k, d = Math.ceil(k);
+      const px = c.getContext('2d').getImageData(Math.round(cx - d), Math.round(cy - d), 2 * d + 1, 2 * d + 1).data;
+      let best = null, off = Infinity;
+      for (let i = 0; i < px.length; i += 4){
+        const o = Math.max(...[0, 1, 2].map(j => Math.abs(px[i + j] - pen[j])));
+        if (o < off){ off = o; best = [px[i], px[i + 1], px[i + 2]]; }
+      }
+      return best;
+    }, [...at, hex('#ff2d55')]);
+    if (!near(dot, hex('#ff2d55'), 40)) fail(where, `a tap on the whole scrollable page's picture did not draw under it (at best rgb(${dot}) there)`);
+  }
   await page.click('.fk-x');
   await page.uncheck('#full-page');
 

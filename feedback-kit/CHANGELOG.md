@@ -2,6 +2,13 @@
 
 Each version is released as the tag `feedback-kit-vX.Y.Z`. A new major version (the first number) means a project using the kit may need changes; the notes say which.
 
+## 2.1.1 (2026-11-24)
+
+- **The picture fits the panel on upright screens** (iPad portrait, phones): a tall picture is scaled down to fit the picture area instead of being cut off at the bottom. Drawing still lands under the finger (#13).
+- **No scrollbars in the whole page's picture where the screen shows none:** an element that scrolls, such as a row of buttons that scrolls sideways, was drawn with classic scrollbars that cut off its content, even where the screen has overlay scrollbars (iPad, phones, macOS) or none. Where the screen does show classic scrollbars (Windows), the picture keeps them (#14).
+
+Nothing to change in a project.
+
 ## 2.1.0 (2026-11-24)
 
 GitLab, including a self-hosted server, as well as GitHub.
