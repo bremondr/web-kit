@@ -1,7 +1,7 @@
 /* feedback-kit: the texts in each language (strings.js), and what they make in the issue. Plain Node: node --test */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { format, LANGUAGES, STRINGS, texts } from './strings.js';
+import { format, LANGUAGES, listOf, STRINGS, texts } from './strings.js';
 import { issueBody, issueUrl } from './issue.js';
 
 // deviceRows reads the browser's window: a stand-in for one, an iPad on the home screen in dark mode
@@ -51,7 +51,9 @@ test('English is exactly what the kit said before languages', () => {
     noPicture: 'No picture in this browser.',
     noPictureNote: 'Couldn’t make a picture here. The issue still says what was on screen.',
     noCapture: 'No screen capture, so the picture is the one made from the page. Your own screenshot works too.',
-    tooLong: 'Some of what was on screen was too long to put in the issue.'
+    // changed on purpose in 2.2.0 (#44): the note names the sections that gave way, where 2.1.0 said
+    // 'Some of what was on screen was too long to put in the issue.'
+    tooLong: 'Too long to put in the issue: {sections}. It has a shorter note in its place, so add that part by hand if it matters.'
   };
   for (const [key, text] of Object.entries(panel)) assert.equal(STRINGS.en[key], text, key);
   assert.equal(format(STRINGS.en.openIssue, {provider: 'GitLab'}), 'Write the issue on GitLab');
@@ -140,4 +142,16 @@ test('a wrong language or strings throws', () => {
 test('format puts the values in, and leaves unknown names', () => {
   assert.equal(format('{a} and {b}, {c}', {a: 1, b: 'two'}), '1 and two, {c}');
   assert.equal(format('{toString}', {}), '{toString}');
+});
+
+test('the too-long note names the sections that gave way, in each language', () => {
+  const two = ['Reopen', 'Data'];
+  assert.equal(format(STRINGS.en.tooLong, {sections: listOf(['Reopen'], 'en')}),
+    'Too long to put in the issue: Reopen. It has a shorter note in its place, so add that part by hand if it matters.');
+  assert.equal(format(STRINGS.en.tooLong, {sections: listOf(two, 'en')}).split('.')[0], 'Too long to put in the issue: Reopen and Data');
+  assert.equal(format(STRINGS.cs.tooLong, {sections: listOf(['Znovu otevřít'], 'cs')}),
+    'Do hlášení se nevešlo: Znovu otevřít. Je v něm místo toho kratší poznámka, takže pokud na tom záleží, doplňte to ručně.');
+  assert.equal(format(STRINGS.cs.tooLong, {sections: listOf(two, 'cs')}).split('.')[0], 'Do hlášení se nevešlo: Reopen a\u00a0Data');   // no line break after a one-letter word, as Czech wants
+  assert.equal(listOf(['A', 'B', 'C']), 'A, B, and C');
+  assert.equal(listOf(['A', 'B'], 'not a language!'), 'A, B');   // no list format for it: commas
 });

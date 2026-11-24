@@ -21,8 +21,8 @@ It began in [Ultimate Playbook](https://github.com/bremondr/ultimate-playbook) b
 | `page.js` | `pagePicture(element, options)`: a picture of the whole page (or of one element), redrawn from what is on screen. `screenPicture(options)`: a real screenshot from the browser's screen capture, on desktop browsers (`canCaptureScreen()` says if there is one) |
 | `picture.js` | `svgPicture(svg, options)`: a PNG-ready canvas of an SVG as it looks now. `embedFonts({stylesheet, family, unicode})`: web fonts inlined for it, from a stylesheet on Google Fonts or the app's own (`unicode` picks subsets by `unicode-range`, Latin by default; rules without one are always kept) |
 | `sketch.js` | `createSketch(canvas)`: drawing on a picture |
-| `strings.js` | every text the kit shows or writes, in English and Czech (`STRINGS`); `texts(language, strings)` picks them, `format(template, values)` fills one in |
-| `issue.js` | `issueUrl(issue)`: the new-issue address on GitHub or GitLab, kept under the length limit. `issueTarget(options)`: checks `provider`, `host`, `repo`, `urlLimit` and `labels`. No DOM, so it runs in Node |
+| `strings.js` | every text the kit shows or writes, in English and Czech (`STRINGS`); `texts(language, strings)` picks them, `format(template, values)` fills one in, `listOf(items, language)` joins names as the language does |
+| `issue.js` | `issueUrl(issue)`: the new-issue address on GitHub or GitLab, kept under the length limit, and which sections gave way to fit (`{url, shortened, gaveWay}`). `issueTarget(options)`: checks `provider`, `host`, `repo`, `urlLimit` and `labels`. No DOM, so it runs in Node |
 | `feedback-kit.css` | the panel; themed with `--fk-*` custom properties |
 
 ## Using it
@@ -69,7 +69,7 @@ The issue body has these parts, in order:
 - your `sections`;
 - an "On screen" table: your `rows`, then the screen, theme, browser and page.
 
-If the address would be longer than `urlLimit` (8000 characters by default; GitHub accepts about 8 KB), sections give way to their `fallback` text, the longest first, until it fits.
+If the address would be longer than `urlLimit` (8000 characters by default; GitHub accepts about 8 KB), sections give way to their `fallback` text, the longest first, until it fits. The panel then names them by heading ("Too long to put in the issue: Reopen. It has a shorter note in its place, so add that part by hand if it matters."). `issueUrl(issue)` returns `{url, shortened, gaveWay}`: `shortened` is true when a section gave way, and `gaveWay` lists their headings, in the order they are in the issue.
 
 ### GitHub or GitLab
 
