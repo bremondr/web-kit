@@ -109,6 +109,7 @@ All of it is optional; the comment at the top of `tools/build-site.mjs` has ever
 | `checks` | commands that must pass on `main` before anything is published | `["node --test"]` |
 | `maxPreviews` | the newest this many previews are published | `20` |
 | `feedback` | `{"labels": [...], "event": "..."}`: a Feedback link on the badge; it first sends the page a cancelable event, so the app's own feedback panel can open instead | none |
+| `previewSections` | `[{"label": "outside-source", "title": "...", "note": "..."}]`: pull requests with this GitHub label are listed in a section of their own on the list of previews, after the others (`note` is optional). Needs the current `pages.yml` too, which passes the labels on | none |
 | `global` | another name for `window.SITE_PREVIEW`, the preview's description; needed when the project's code reads it (its `storagePrefix`, for example) under a name of its own | none |
 | `commentMarker`, `commentNote` | the bot comment's hidden marker and its text | `<!-- site-preview -->` |
 

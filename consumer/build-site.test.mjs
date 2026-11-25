@@ -9,7 +9,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import {
   build, buildInfo, contentVersion, dropScripts, eligiblePreviews, localReferences, parseArgs, patternRegex,
-  previewPageHtml, previewsIndexHtml, readConfig, runtimeSource, runtimeSrcFor, siteFiles, stampServiceWorker,
+  previewPageHtml, previewsIndexHtml, groupPreviews, readConfig, runtimeSource, runtimeSrcFor, siteFiles, stampServiceWorker,
   startPath, STUB_SERVICE_WORKER
 } from './build-site.mjs';
 
@@ -100,6 +100,35 @@ test('the previews list escapes titles and links to the start page', () => {
   assert.ok(html.includes('<title>Kit previews</title>'));
   assert.ok(html.includes('draft'));
   assert.match(previewsIndexHtml([], ''), /No previews right now/);
+});
+
+test('previews with a section label are listed in a section of their own, after the others', () => {
+  const sections = [{label: 'outside-source', title: 'From <outside> contributors', note: 'Copied from a fork.'}];
+  const previews = [
+    {number: 3, title: 'Mine', labels: ['bug']},
+    {number: 2, title: 'Theirs', labels: ['bug', 'outside-source']},
+    {number: 1, title: 'Old'}
+  ];
+  assert.deepEqual(groupPreviews(previews, sections).map(g => g.previews.map(p => p.number)), [[3, 1], [2]]);
+  const html = previewsIndexHtml(previews, 'o/r', {sections});
+  assert.ok(html.indexOf('pr-3') < html.indexOf('From &lt;outside&gt; contributors'), 'the others come first');
+  assert.ok(html.indexOf('From &lt;outside&gt; contributors') < html.indexOf('pr-2'));
+  assert.ok(html.includes('Copied from a fork.') && html.includes('<h2>Pull requests</h2>'));
+  // nothing in a section: no headings; only section previews: no heading for the others
+  assert.ok(!previewsIndexHtml([previews[0]], 'o/r', {sections}).includes('<h2>'));
+  const onlyOutside = previewsIndexHtml([previews[1]], 'o/r', {sections});
+  assert.ok(onlyOutside.includes('From &lt;outside&gt;') && !onlyOutside.includes('Pull requests</h2>'));
+  // without sections (an old site.json) or labels (an old workflow) the list is as before
+  assert.ok(!previewsIndexHtml(previews, 'o/r').includes('<h2>'));
+  assert.ok(!previewsIndexHtml([{number: 5}], 'o/r', {sections}).includes('<h2>'));
+});
+
+test('previewSections is checked', () => {
+  assert.deepEqual(readConfig({}).previewSections, []);
+  assert.doesNotThrow(() => readConfig({previewSections: [{label: 'a', title: 'A'}, {label: 'b', title: 'B', note: 'n'}]}));
+  for (const bad of ['x', [{label: 'a'}], [{title: 'A'}], [{label: '', title: 'A'}], [null], [{label: 'a', title: 'A', note: 3}]]) {
+    assert.throws(() => readConfig({previewSections: bad}), /previewSections/);
+  }
 });
 
 test('the live service worker gets its version and file list from what is published', () => {
