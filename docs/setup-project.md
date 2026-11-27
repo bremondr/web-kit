@@ -54,7 +54,7 @@ This copies `feedback-kit/` at that release into `js/vendor/feedback-kit/` (with
 
 ## 4. Wire it in
 
-Follow the module's README: its "Setting it up in a project" ([feedback-kit](../feedback-kit/README.md#setting-it-up-in-a-project), [git-store-kit](../git-store-kit/README.md#setting-it-up-in-a-project), which also needs a data repo, tokens, and GitHub's hosts in the page's Content-Security-Policy). Keep the project's own code that uses the module outside the vendored folder, so updates can replace that folder whole.
+Follow the module's README: its "Setting it up in a project" ([feedback-kit](../feedback-kit/README.md#setting-it-up-in-a-project), [git-store-kit](../git-store-kit/README.md#setting-it-up-in-a-project), which also needs a data repo, tokens, and GitHub's hosts in the page's Content-Security-Policy; a public data repo that many people read without a token should also get the index workflow, see [Setting up the index in a data repo](../git-store-kit/README.md#setting-up-the-index-in-a-data-repo)). Keep the project's own code that uses the module outside the vendored folder, so updates can replace that folder whole.
 
 If the project has a **service worker with a list of files** to keep offline, add the module's files to it. If it also caches web fonts, read the module's notes on offline use.
 
