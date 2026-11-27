@@ -30,7 +30,7 @@ Add tests in `<module>/*.test.mjs` for logic that runs in plain Node. Code that 
 
 - Open work is in this repository's GitHub issues. One branch and one pull request per issue, with `Fixes #N` in the description.
 - Open the pull request as soon as the work is pushed and the checks pass, without asking.
-- The owner merges. Before asking for that, the checks pass, and for code that runs in a browser, the PR shows screenshots of its demo page. Trying it in a project as well (copying the branch's module folder over the project's vendored copy locally, without committing it there) is only needed when the change depends on how a project uses the module.
+- The owner merges. Before asking for that, the checks pass, and for code that runs in a browser, the PR shows screenshots of its demo page: `node tools/pr-screenshots.mjs <PR number> <images...>` pushes them to the `pr-screenshots` branch and prints the Markdown for the description (see "Screenshots in pull requests" in `docs/maintaining.md`). Never commit screenshots to a working branch or make a branch for them. Trying it in a project as well (copying the branch's module folder over the project's vendored copy locally, without committing it there) is only needed when the change depends on how a project uses the module.
 - A change to a module isn't in any project until it's released and the project updates. Say in the PR which version it should be released as.
 
 ## Releasing
