@@ -1,0 +1,42 @@
+<title>@@TITLE@@</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/*@@BASE_CSS@@*/
+/*@@CSS@@*/
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1 id="title"></h1>
+      <p class="sub" id="subtitle"></p>
+    </div>
+    <div class="controls">
+      <button id="reset" type="button"></button>
+      <span class="status" id="status" role="status"></span>
+    </div>
+  </header>
+  <div class="tabs" id="tabs" role="group" aria-label="Screens"></div>
+  <div class="ctx" id="ctx" hidden></div>
+  <div class="legend" id="legend"></div>
+  <div class="main">
+    <div class="stagebox" id="stagebox"><div class="scaler" id="scaler"><div class="stage" id="stage"></div></div></div>
+    <aside class="side">
+      <section class="panel" id="inspector" aria-live="polite"></section>
+      <section class="panel"><h2 id="t-decisions"></h2><div class="sum" id="summary"></div></section>
+      <section class="panel" id="phasepanel"><h2 id="t-phases"></h2><div id="phases"></div></section>
+      <section class="panel">
+        <h2 id="t-snaps"></h2>
+        <div class="snapadd"><input id="snapname" type="text" aria-label="Snapshot name"><button id="snapsave" type="button"></button></div>
+        <div id="snaplist"></div>
+      </section>
+    </aside>
+  </div>
+</div>
+<script>
+/*@@DATA@@*/
+</script>
+<script>
+/*@@ENGINE@@*/
+</script>

@@ -1,0 +1,71 @@
+{
+  "title": "Room booking wireframe",
+  "subtitle": "Fictional example. Drag blocks, resize from the corner, decide keep / later / maybe / drop, set a phase, and park what you do not want on the screen in the area below it.",
+  "lang": "en",
+  "stage": { "w": 1200, "h": 780, "grid": 10 },
+  "storage": { "doc": "wireframe/main" },
+  "phases": [
+    { "id": "mvp", "label": "MVP", "milestone": "Milestone 1", "color": "c7" },
+    { "id": "next", "label": "Next release", "milestone": "Milestone 2", "color": "c2" },
+    { "id": "idea", "label": "Idea", "milestone": "", "color": "c5" }
+  ],
+  "tabs": [
+    {
+      "id": "list", "label": "Bookings", "kind": "page", "variant": "desktop",
+      "context": [
+        { "k": "Today", "v": "Bookings are managed in a shared spreadsheet." },
+        { "k": "Goal", "v": "See free rooms and book one in two clicks." }
+      ],
+      "blocks": [
+        { "id": "list_filters", "title": "Filters", "tag": "New", "phase": "mvp", "g": [20, 10, 1160, 50],
+          "desc": "Filter by building, capacity and equipment.",
+          "q": "Which filters matter most?",
+          "html": "<div class=\"row\"><span class=\"chip\">building ▾</span><span class=\"chip\">capacity ▾</span><span class=\"chip\">projector ☐</span></div>" },
+        { "id": "list_calendar", "title": "Week calendar", "tag": "New", "phase": "mvp", "g": [20, 70, 760, 560],
+          "desc": "Rooms as rows, days as columns; click a free slot to open the booking dialog.",
+          "q": "Week view only, or also day and month?",
+          "html": "<div class=\"row\"><span class=\"ts\">Mon</span><span class=\"ts\">Tue</span><span class=\"ts\">Wed</span></div><div class=\"ln m\"></div><div class=\"ln\"></div><div class=\"ln s\"></div>" },
+        { "id": "list_detail", "title": "Room detail", "tag": "New", "phase": "next", "g": [800, 70, 380, 300],
+          "desc": "Photo, equipment list and next free slot for the selected room.",
+          "q": "Is a photo needed?",
+          "html": "<div class=\"ph\">photo</div><div class=\"ln m\"></div><div class=\"ln s\"></div>" },
+        { "id": "list_mine", "title": "My bookings", "tag": "New", "phase": "mvp", "g": [800, 380, 380, 250],
+          "desc": "Upcoming bookings of the signed-in person with cancel buttons.",
+          "q": "Show past bookings too?",
+          "html": "<div class=\"card\">Tue 10:00 · Room 2.14 · <b>cancel</b></div><div class=\"card\">Thu 14:00 · Room 1.02 · <b>cancel</b></div>" },
+        { "id": "list_stats", "title": "Usage statistics", "tag": "Idea", "phase": "idea", "g": [20, 640, 1160, 120],
+          "desc": "Occupancy per room per month.",
+          "q": "Worth building now?",
+          "html": "<div class=\"ln m\"></div><div class=\"ln\"></div>" }
+      ]
+    },
+    {
+      "id": "dialog", "label": "Book a room", "kind": "modal", "variant": "desktop", "trigger": "Click on a free slot in the week calendar",
+      "viewport": { "w": 640, "h": 520 },
+      "blocks": [
+        { "id": "dlg_form", "title": "Booking form", "tag": "New", "phase": "mvp", "g": [20, 10, 600, 300],
+          "desc": "Time range, title, attendees.",
+          "q": "Is a title mandatory?",
+          "html": "<div class=\"row\"><span class=\"chip\">Tue 10:00 – 11:00</span></div><div class=\"card\">Title…</div><div class=\"card\">Attendees…</div>" },
+        { "id": "dlg_recurring", "title": "Recurring option", "tag": "Idea", "phase": "next", "g": [20, 320, 600, 90],
+          "desc": "Repeat weekly for N weeks.",
+          "q": "Needed in the first release?",
+          "html": "<div class=\"row\"><span class=\"chip\">repeat weekly ☐</span></div>" },
+        { "id": "dlg_actions", "title": "Confirm / cancel", "tag": "New", "phase": "mvp", "g": [380, 420, 240, 60],
+          "desc": "Primary and secondary actions.",
+          "q": "",
+          "html": "<div class=\"row\"><span class=\"btnlike\">Book</span><span class=\"chip\">Cancel</span></div>" }
+      ]
+    },
+    {
+      "id": "list_m", "label": "Bookings", "kind": "page", "variant": "mobile",
+      "viewport": { "w": 390, "h": 844 },
+      "blocks": [
+        { "id": "m_filters", "title": "Filters", "tag": "New", "phase": "mvp", "g": [10, 10, 370, 60], "desc": "Collapsed into one button.", "q": "Bottom sheet or inline?",
+          "html": "<div class=\"row\"><span class=\"chip\">filters (2) ▾</span></div>" },
+        { "id": "m_day", "title": "Day agenda", "tag": "New", "phase": "mvp", "g": [10, 80, 370, 560], "desc": "A single day as a vertical list of rooms and slots.", "q": "Swipe between days?",
+          "html": "<div class=\"ln m\"></div><div class=\"ln\"></div><div class=\"ln s\"></div>" }
+      ]
+    }
+  ]
+}
