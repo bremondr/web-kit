@@ -82,7 +82,7 @@ mkdir -p .claude/skills && cp -R ../web-kit/.claude/skills/localize .claude/skil
 cp -R ../web-kit/.claude/skills/ux-design-loop .claude/skills/
 ```
 
-Claude Code finds it there in the next session. The site build never publishes `.claude/`. Like the consumer files, the copy doesn't update itself: copy it again when web-kit's changes.
+The skills' own [README](../.claude/skills/README.md) covers installing them for yourself in every project, updating and adding one. Claude Code finds it there in the next session. The site build never publishes `.claude/`. Like the consumer files, the copy doesn't update itself: copy it again when web-kit's changes.
 
 ## 6. Give the workflow a token: `VENDOR_PR_TOKEN`
 
