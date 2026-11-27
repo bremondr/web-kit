@@ -1,3 +1,4 @@
+/* Everything that is not part of the app design (screen switch, versions, viewport, reset) lives in one dashed amber hatched bar tagged "Prototype only"; the stage below is the app. Block html may use .ptag and .proto-note for mock rules and notes that are prototype-only. */
 /* Layout concept: one device-sized stage showing the current page; modals and drawers overlay it; blocks keep their wireframe positions; "later" blocks are hatched placeholders. */
 .seg { display: flex; flex-wrap: wrap; gap: 6px; }
 .seg[hidden] { display: none; }
@@ -19,3 +20,10 @@
 .hot [data-goto], .hot [data-open], .hot [data-close], .hot [data-toggle], .hot [data-toast] { outline: 2px dashed var(--focus); outline-offset: 2px; }
 .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--ink); color: var(--paper); padding: 8px 14px; border-radius: 6px; }
 .toast[hidden] { display: none; }
+.protobar { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; padding: 6px 10px; border: 1px dashed var(--maybe); border-radius: 6px;
+  background: repeating-linear-gradient(135deg, transparent 0 8px, var(--maybe-bg) 8px 9px); }
+.ptag { display: inline-block; font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--maybe); border: 1px solid var(--maybe); border-radius: 3px; padding: 0 6px; line-height: 16px; }
+.proto-note { font-size: 11px; color: var(--ink-2); border: 1px dashed var(--maybe); border-radius: 4px; padding: 2px 6px; }
+.vgroups { display: contents; }
+.vgroups[hidden] { display: none; }
+.vgroup { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; }

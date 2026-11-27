@@ -12,13 +12,17 @@
       <h1 id="title"></h1>
       <p class="sub" id="subtitle"></p>
     </div>
-    <div class="controls">
-      <button id="back" type="button"></button>
-      <span id="variants" class="seg" role="group" aria-label="Viewport"></span>
-      <label class="hotl"><input id="hot" type="checkbox"><span id="hotlabel"></span></label>
-    </div>
   </header>
-  <nav id="pages" class="seg" aria-label="Pages"></nav>
+  <div class="protobar" role="group" aria-label="Prototype controls, not part of the app">
+    <span class="ptag" id="ptag"></span>
+    <span class="muted" id="notapp"></span>
+    <button id="back" type="button"></button>
+    <nav id="pages" class="seg" aria-label="Screens"></nav>
+    <span id="variants" class="seg" role="group" aria-label="Viewport"></span>
+    <span id="versions" class="vgroups"></span>
+    <label class="hotl"><input id="hot" type="checkbox"><span id="hotlabel"></span></label>
+    <button id="reset" type="button"></button>
+  </div>
   <div class="stagebox" id="stagebox"><div class="scaler" id="scaler"><div class="stage" id="stage"></div></div></div>
   <div id="toast" class="toast" role="status" hidden></div>
 </div>

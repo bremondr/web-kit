@@ -10,7 +10,7 @@ This file is for people. Claude reads [`SKILL.md`](SKILL.md) and the files in `r
 2. **Wireframe**: one tab per screen, modal, drawer or viewport variant (desktop, tablet, mobile). Every block can be dragged, resized, parked below the screen, and marked **keep**, **later**, **maybe** or **drop**, with a phase and a note.
 3. **Revisions**: tell Claude you have decided. It reads your saved state and changes only what you mentioned.
 4. **Comments** on the artifact: Claude edits, replies in the thread and leaves it open.
-5. **Prototype**: a clickable multi-page artifact built in a separate session from the blocks you kept.
+5. **Prototype**: a clickable multi-page artifact built in a separate session from the blocks you kept. Controls that are not part of the app (screen switch, viewport, versions to compare, reset) sit in a dashed amber "Prototype only" bar above it, so you can always tell the prototype from its controls.
 6. **Issues** (optional): drafted from kept and later blocks, grouped by phase and milestone, created only after you confirm.
 
 ## Installing
