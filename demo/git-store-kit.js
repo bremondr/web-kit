@@ -6,13 +6,16 @@
    - Publish mode (like Ultimate Playbook): notes in this browser, published one by one to a repo.
    - Working folder mode (like Protogames): open a note from a repo, edit it, save it back as a commit. Its History
      restores on top of the version that was opened (base), and puts the restored version in the form (onRestore).
+   - A default source (the `defaults` option): demo-team/starter is followed on a first visit, and stays removed once
+     removed. It has an index (git-store-index.json, rebuilt after every change as a data repo's workflow does), so
+     it loads without a token and with no API requests.
    The fake GitHub's state is kept in sessionStorage (fake.export / createFakeGitHub({state})), so a reload keeps it. */
 import { createGitStore, tokenNeed } from '../git-store-kit/store.js';
 import { createPanel } from '../git-store-kit/panel.js';
 import { createFakeGitHub } from '../git-store-kit/fake-github.js';
 
 const $ = id => document.getElementById(id);
-const PUBLIC = 'demo-team/notes', PRIVATE = 'demo-team/notes-private';
+const PUBLIC = 'demo-team/notes', PRIVATE = 'demo-team/notes-private', STARTER = 'demo-team/starter';
 const WRITE_TOKEN = 'github_pat_DEMO_write_token_for_both_demo_repos_0001';
 const READ_TOKEN = 'github_pat_DEMO_read_only_token_for_the_private_repo';
 const COLORS = ['sun', 'sea', 'leaf', 'rose'];
@@ -33,6 +36,15 @@ try { const kept = JSON.parse(sessionStorage.getItem(FAKE_KEY)); if (kept) fake 
 const keepFake = () => { try { sessionStorage.setItem(FAKE_KEY, JSON.stringify(fake.export())); } catch { /* it just starts over */ } };
 const note = (id, title, text, color) => ({format: 'demo-note', id, title, text, color});
 if (!fake){ fake = createFakeGitHub(); await addDemoRepos(); }
+else if (!fake.export().repos.some(r => r.name === STARTER)){ await addStarter(); keepFake(); }   // kept by an older demo
+// a data repo with the update-index workflow: its index is rebuilt after every change
+async function addStarter(){
+  await fake.addRepo(STARTER, {index: true, files: {
+    'notes/welcome.json': note('welcome', 'Welcome', 'A default source: followed on your first visit, read from its index with no API requests.', 'sea'),
+    'notes/throws.json': note('throws', 'Three throws', 'Backhand, forehand, hammer: 10 of each, every practice.', 'sun'),
+    'README.md': '# Starter notes\n'
+  }});
+}
 async function addDemoRepos(){
   await fake.addRepo(PUBLIC, {files: {
     'notes/warmup.json': note('warmup', 'Warm-up', 'Ten minutes of jogging, then dynamic stretches.', 'sun'),
@@ -50,6 +62,7 @@ async function addDemoRepos(){
   fake.addToken(WRITE_TOKEN, PUBLIC, 'write');
   fake.addToken(WRITE_TOKEN, PRIVATE, 'write');
   fake.addToken(READ_TOKEN, PRIVATE, 'read');
+  await addStarter();
   keepFake();
 }
 
@@ -59,10 +72,10 @@ const store = createGitStore({
   shortName: n => `demo-team/${n}`,                 // #notes=notes-private → demo-team/notes-private
   read: readNote, write: writeNote, name: n => n.title,
   commitMessage: ({op, name, note}) => note || `${{add: 'Add', update: 'Update', remove: 'Remove', copy: 'Add a copy of', restore: 'Restore'}[op]} “${name}”`,
-  fetch: (...a) => fake.fetch(...a)                // through the request list below
+  fetch: (...a) => fake.fetch(...a),               // through the request list below
+  defaults: [STARTER, PUBLIC, PRIVATE]             // followed on a first visit; a removed one stays removed
 });
 const panel = createPanel(store, {title: 'Note sources', noun: 'note', sourceLabel: 'repo'});
-if (!store.following().length){ store.follow(PUBLIC); store.follow(PRIVATE); }
 store.followFromHash();
 
 /* ---- drawing ---- */
@@ -80,7 +93,7 @@ const say = (id, text, warn = false) => { const el = $(id); el.textContent = tex
 const failed = (id, e) => say(id, e && e.message ? e.message : String(e), true);
 
 function noteCard(n, {repo = null, actions = []} = {}){
-  return h('li', {class: `note note-${n.color}`, 'data-id': n.id},
+  return h('li', {class: `note note-${n.color}`, 'data-id': n.id, 'data-repo': repo},
     h('div', {class: 'note-head'}, h('strong', {text: n.title}), repo ? h('span', {class: 'tag', text: repo.split('/')[1]}) : null),
     n.text ? h('p', {class: 'small', text: n.text}) : null,
     actions.length ? h('div', {class: 'note-actions'}, actions) : null);
@@ -91,7 +104,8 @@ function drawShared(){
   const line = s => {
     if (s.loading && !s.loadedAt) return `${s.repo}: loading…`;
     if (s.error) return `${s.repo}: ${(!s.loading && tokenNeed(s)?.reason) || s.error.message}${s.stale ? ' (the saved copy is shown)' : ''}`;
-    return `${s.repo}: ${s.items.length} notes${s.dropped ? `, ${s.dropped} file left out` : ''}${s.canWrite ? ', you can edit' : s.hasToken ? ', read only' : ''}`;
+    return `${s.repo}: ${s.items.length} notes${s.dropped ? `, ${s.dropped} file left out` : ''}${s.canWrite ? ', you can edit' : s.hasToken ? ', read only' : ''}`
+      + (s.fromIndex ? `, from its index with no API requests${s.outdated ? ` (${s.outdated} not on raw yet)` : ''}` : '');
   };
   // where a source needs a token, the way to add one is right next to what it says
   $('status').replaceChildren(...sources.map(s => {
@@ -256,11 +270,19 @@ $('offline').addEventListener('change', e => { fake.offline = e.target.checked; 
 $('stale').addEventListener('change', e => { fake.staleRaw = e.target.checked; });
 $('limit').addEventListener('click', () => { fake.used = fake.limit; keepFake(); store.load(); say('try-msg', 'The 60 reads without a token are used up: the saved copy is shown, and a token lifts the limit.'); });
 $('reload').addEventListener('click', () => store.load());
+$('starter-follow').addEventListener('click', () => { store.follow(STARTER); store.load(STARTER); say('try-msg', `Following ${STARTER} again.`); });
+$('starter-edit').addEventListener('click', async () => {
+  // someone publishes to the starter repo: the fake rebuilds its index, as the workflow would after the push
+  const now = fake.file(STARTER, 'notes/throws.json');
+  await fake.edit(STARTER, 'notes/throws.json', {...now, text: now.text.replace(/\d+ of each/, n => `${parseInt(n) + 5} of each`)}, {message: 'More throws'});
+  keepFake(); await store.load(STARTER);
+  say('try-msg', 'The starter repo changed and its index was rebuilt: only the index and that one file were read, still no API request.');
+});
 $('fake-reset').addEventListener('click', () => { try { sessionStorage.removeItem(FAKE_KEY); } catch { /* nothing kept */ } location.reload(); });
 
 /* ---- the requests, as the module sent them (the token is never in this list) ---- */
 function drawLog(){
-  $('log-count').textContent = `${fake.log.length} requests, ${fake.used} of ${fake.limit} reads without a token used`;
+  $('log-count').textContent = `${fake.requests.api} to the API and ${fake.requests.raw} to raw.githubusercontent.com since the page loaded; ${fake.used} of ${fake.limit} API reads without a token used`;
   $('log').replaceChildren(...fake.log.slice(-40).reverse().map(e => {
     const u = new URL(e.url);
     const extra = e.body ? ` — ${e.body.message ? `"${e.body.message.split('\n')[0]}"` : ''}${e.body.sha ? ` sha ${e.body.sha.slice(0, 7)}` : ''}` : '';

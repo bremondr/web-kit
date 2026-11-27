@@ -11,7 +11,8 @@
    The panel's texts are English by default; with Czech chosen, no English is left in the panel or the issue (but the
    browser's user agent), no text in the panel is cut off or wider than its place, and Czech letters (Ě) are drawn in
    the web font, in the panel's heading and in the picture.
-   On the git-store-kit page (against its fake GitHub): the public repo loads without a token and the private one
+   On the git-store-kit page (against its fake GitHub): the default source loads from its index with no API requests
+   and stays removed once removed; the public repo loads without a token and the private one
    asks for one; a token pasted in the panel opens it; publishing sends one commit; a change made elsewhere brings up
    the conflict question, and each answer works; an item's history lists its versions and opens and restores one;
    the working folder opens, edits and saves, and its history restores into the form, asking first when GitHub has a
@@ -545,8 +546,10 @@ function englishIn(text) {
 
 async function checkGitStore(page, where, scheme, size) {
   const WRITE = 'github_pat_DEMO_write_token_for_both_demo_repos_0001', READ = 'github_pat_DEMO_read_only_token_for_the_private_repo', PUBLIC = 'demo-team/notes', PRIVATE = 'demo-team/notes-private';
+  const STARTER = 'demo-team/starter', NOTES = `#shared .note:not([data-repo="${STARTER}"])`;   // the counts below are the other two repos'
   const T = { timeout: 5000 };
   await page.waitForSelector('body[data-ready]', T);
+  const apiFor = repo => page.evaluate(r => [...document.querySelectorAll('#log code')].filter(c => !c.textContent.includes('raw.githubusercontent.com') && c.textContent.includes(r)).length, repo);
   const status = async () => page.locator('#status').innerText();
   const shot = async name => { if (shots) await page.screenshot({ path: join(shots, `git-store-${name}-${size}-${scheme}.png`) }); };
   const panelFits = async view => {
@@ -563,7 +566,18 @@ async function checkGitStore(page, where, scheme, size) {
   let text = await status();
   if (!/demo-team\/notes: 3 notes, 1 file left out/.test(text)) fail(where, `the public repo reads "${text.split('\n')[0]}"`);
   if (!/notes-private: .*only with a token: it is private/.test(text)) fail(where, 'the private repo does not say why it needs a token');
-  if (await page.locator('#shared .note').count() !== 3) fail(where, 'the public repo\'s 3 notes are not shown');
+  if (await page.locator(NOTES).count() !== 3) fail(where, 'the public repo\'s 3 notes are not shown');
+  // the default source: followed on a first visit, read from its index with no API requests
+  if (!/demo-team\/starter: 2 notes, from its index with no API requests/.test(text)) fail(where, `the default source reads "${(text.split('\n').find(l => l.includes(STARTER)) || 'nothing').trim()}"`);
+  if (await page.locator(`#shared .note[data-repo="${STARTER}"]`).count() !== 2) fail(where, 'the default source\'s 2 notes are not shown');
+  if (await apiFor(STARTER)) fail(where, 'the default source made API requests');
+  await page.click('#starter-edit');
+  await wait(() => /15 of each/.test(document.getElementById('shared').innerText), null, 'a change in the starter repo is not loaded from its index');
+  if (await apiFor(STARTER)) fail(where, 'reading the change in the starter repo made API requests');
+  if (shots){
+    await page.locator('section[aria-labelledby="shared-h"]').screenshot({ path: join(shots, `git-store-index-${size}-${scheme}.png`) });
+    await page.locator('section[aria-labelledby="try-h"]').screenshot({ path: join(shots, `git-store-default-${size}-${scheme}.png`) });
+  }
 
   // the panel lists the sources
   await page.click('#open-panel');
@@ -625,7 +639,7 @@ async function checkGitStore(page, where, scheme, size) {
   const first = page.locator('#mine .note').first();
   await first.locator('.btn', { hasText: /^Publish/ }).click();
   await wait(() => /^Published/.test(document.getElementById('mine-msg').textContent), null, 'publishing did not say it worked');
-  if (await page.locator('#shared .note').count() !== 5) fail(where, `after publishing, ${await page.locator('#shared .note').count()} notes show, not 5`);
+  if (await page.locator(NOTES).count() !== 5) fail(where, `after publishing, ${await page.locator(NOTES).count()} notes show, not 5`);
   const log = await page.locator('#log').innerText();
   if (!/PUT \/repos\/demo-team\/notes\/contents\/notes\/my-drill-1\.json 201 · Authorization: Bearer ••••/.test(log)) fail(where, 'the request list does not show the PUT, with the token masked');
 
@@ -641,10 +655,10 @@ async function checkGitStore(page, where, scheme, size) {
     await page.locator('.gs-choices .gs-btn', { hasText: answer }).click();
     await wait(e => new RegExp(e).test(document.getElementById('mine-msg').textContent), expect.source, `"${answer}" did not say what it did`);
   }
-  if (await page.locator('#shared .note').count() !== 6) fail(where, 'the copy is not listed next to the other one');
+  if (await page.locator(NOTES).count() !== 6) fail(where, 'the copy is not listed next to the other one');
 
   // history: three versions of the vertical stack; open the oldest; restore it
-  await page.locator('#shared .note', { hasText: 'Vertical stack' }).locator('.btn', { hasText: 'History' }).click();
+  await page.locator(NOTES, { hasText: 'Vertical stack' }).locator('.btn', { hasText: 'History' }).click();
   await page.locator('.gs-version').nth(2).waitFor(T).catch(() => fail(where, 'the history does not list 3 versions'));
   await panelFits('history');
   await shot('history');
@@ -699,19 +713,31 @@ async function checkGitStore(page, where, scheme, size) {
   await shot('folder-restored');
 
   // the fake GitHub survives a reload (fake.export into sessionStorage, createFakeGitHub({state}) back)
-  const notes = await page.locator('#shared .note').count();
+  const notes = await page.locator(NOTES).count();
   await page.reload({ waitUntil: 'networkidle' });
   await page.waitForSelector('body[data-ready]', T);
   await wait(() => !document.querySelector('#status').innerText.includes('loading'), null, 'after a reload, the repos do not load');
-  if (await page.locator('#shared .note').count() !== notes) fail(where, `after a reload, ${await page.locator('#shared .note').count()} notes show, not ${notes}`);
+  if (await page.locator(NOTES).count() !== notes) fail(where, `after a reload, ${await page.locator(NOTES).count()} notes show, not ${notes}`);
   if (!(await page.locator('#shared').innerText()).includes(WARMUP)) fail(where, 'after a reload, the restored note is gone');
   if (!/demo-team\/notes: \d+ notes/.test(await status())) fail(where, `after a reload, the public repo reads "${(await status()).split('\n')[0]}"`);
 
   // offline: the saved copy, and why
   await page.check('#offline');
   await wait(() => /can’t be reached.*saved copy/.test(document.getElementById('status').innerText), null, 'offline does not show the saved copy');
-  if (await page.locator('#shared .note').count() < 6) fail(where, 'offline, the notes are gone');
+  if (await page.locator(NOTES).count() < 6) fail(where, 'offline, the notes are gone');
   await page.uncheck('#offline');
+
+  // the default source, once removed, stays removed after a reload; following it again works
+  await page.click('#open-panel');
+  const starterRow = page.locator(`.gs-source[data-repo="${STARTER}"]`);
+  await starterRow.locator('.gs-btn', { hasText: 'Remove' }).first().click();
+  await starterRow.locator('.gs-btn', { hasText: 'Yes, remove' }).click();
+  await page.keyboard.press('Escape');
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('body[data-ready]', T);
+  if ((await status()).includes(STARTER)) fail(where, 'the removed default source came back after a reload');
+  await page.click('#starter-follow');
+  await wait(r => new RegExp(r + ': \\d+ notes, from its index').test(document.getElementById('status').innerText), 'demo-team/starter', 'following the default source again does not load it');
 
   // no token anywhere in the request list
   if ((await page.locator('#log').innerText()).includes('github_pat_')) fail(where, 'a token shows in the request list');

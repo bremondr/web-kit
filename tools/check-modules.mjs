@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /* Checks that every module stands on its own: each top-level folder with JavaScript in it (other than tools/, consumer/, template/ and
-   demo/) imports only from inside itself, with relative paths, and has a README.md and a CHANGELOG.md.
+   demo/) imports only from inside itself, with relative paths, and has a README.md and a CHANGELOG.md. Node's own
+   modules (node:fs) are allowed in .mjs files only: tests, and scripts that run in Node (git-store-kit/index/).
    Projects copy one module folder, so anything outside it wouldn't be there.
    Plain Node, no packages:  node tools/check-modules.mjs   (exit code 1 when something is wrong)
    moduleFolders() is also what tools/releases-due.mjs uses to find the modules. */
@@ -35,7 +36,7 @@ function check(root){
       const deps = [...src.matchAll(/^\s*import\s+(?:[^'"]*?\s+from\s+)?['"]([^'"]+)['"]/gm), ...src.matchAll(/import\(\s*['"]([^'"]+)['"]\s*\)/g)].map(m => m[1]);
       for (const d of deps){
         const where = relative(root, f).split(sep).join('/');
-        if (d.startsWith('node:') && /\.test\.m?js$/.test(f)) continue;   // tests run in Node
+        if (d.startsWith('node:') && /\.mjs$/.test(f)) continue;   // tests and Node scripts (.mjs) run in Node; browser code is .js
         if (!d.startsWith('.')) { problems.push(`${where} imports ${d}: only relative imports inside the module`); continue; }
         const target = resolve(dirname(f), d);
         if (!target.startsWith(dir + sep)) problems.push(`${where} imports ${d}, which is outside ${name}/`);

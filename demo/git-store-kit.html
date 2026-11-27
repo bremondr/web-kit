@@ -57,6 +57,7 @@
   .token-line code{flex:1;min-width:0;font-size:12px;user-select:all;-webkit-user-select:all}
   .token-line .btn{flex:none;min-width:64px;padding:8px 12px;font-size:14px}
   section h2 .muted{font-weight:400;font-size:15px}
+  .card h3{font-size:16px;margin:18px 0 4px}
 </style>
 </head>
 <body>
@@ -153,8 +154,16 @@
         <div class="row"><button class="btn" type="button" id="elsewhere">Change a note on another device</button></div>
         <p class="small muted">Then publish or save that note: the panel asks whether to overwrite, keep theirs or save a copy. Restoring an old version from the working folder’s <strong>History</strong> asks too, because it saves on top of the version you opened.</p>
         <label class="option"><input type="checkbox" id="offline"><span>GitHub can’t be reached (offline)</span></label>
-        <label class="option"><input type="checkbox" id="stale"><span>raw.githubusercontent.com serves old copies</span></label>
+        <label class="option"><input type="checkbox" id="stale"><span>raw.githubusercontent.com serves old copies (the index too)</span></label>
         <div class="row"><button class="btn" type="button" id="limit">Use up the 60 reads without a token</button></div>
+        <h3>A default source, read from its index</h3>
+        <p class="small muted"><code>demo-team/starter</code> is in the store’s <code>defaults</code>: followed on your first visit. Its
+          <code>git-store-index.json</code> lists its notes, so it loads with no API requests (see <strong>Requests sent</strong>).
+          Remove it in <strong>Sources and tokens</strong> and reload: it stays removed.</p>
+        <div class="row">
+          <button class="btn" type="button" id="starter-edit">Change a starter note</button>
+          <button class="btn" type="button" id="starter-follow">Follow it again</button>
+        </div>
         <p class="small muted">The fake GitHub keeps its repos in this tab through a reload (<code>fake.export()</code> into sessionStorage, <code>createFakeGitHub({state})</code> back), the way a practice mode can.</p>
         <div class="row"><button class="btn" type="button" id="fake-reset">Start the fake GitHub over</button></div>
         <p class="msg small" id="try-msg" role="status"></p>
