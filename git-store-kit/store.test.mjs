@@ -65,20 +65,21 @@ test('a public source loads without a token: items through read, other files and
   assert.ok(!fake.log.some(e => e.url.includes('README')));
 });
 
-test('an unchanged folder costs nothing; a changed one fetches only the changed file', async () => {
+test('an unchanged folder fetches no files; a changed one fetches only the changed file', async () => {
   const {store, fake} = await setup();
   store.follow(PUBLIC);
   await store.load();
-  const before = fake.used;
+  const before = fake.used, n0 = fake.log.length;
   await store.load();
-  assert.equal(fake.used, before, 'a 304 does not count');
   assert.equal(fake.log.at(-1).status, 304);
+  assert.equal(fake.used, before + 1, 'without a token a 304 counts, as on GitHub');
+  assert.ok(!fake.log.slice(n0).some(e => e.url.includes('/drills/')), 'no file fetched');
   await fake.edit(PUBLIC, 'drills/box.json', {id: 'box', name: 'Box drill, faster', steps: [1, 2, 3]});
   const n = fake.log.length;
   const [src] = await store.load();
   assert.equal(src.items.find(i => i.id === 'box').name, 'Box drill, faster');
   const fetched = fake.log.slice(n).filter(e => e.url.startsWith('https://raw.')).map(e => e.url.split('/').pop());
-  assert.deepEqual(fetched, ['box.json']);
+  assert.deepEqual(fetched, ['git-store-index.json', 'box.json'], 'the repo has no index: asked for it, then listed through the API');
 });
 
 test('raw.githubusercontent.com serving an old version is caught by the sha, and the blob is used instead', async () => {
