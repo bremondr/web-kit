@@ -255,9 +255,17 @@ gh api repos/<owner>/<project>/pages -X PUT -f build_type=workflow
 
 Don't edit the copies; take new ones when [`consumer/CHANGELOG.md`](../consumer/CHANGELOG.md) says to.
 
+### Screenshots in pull requests
+
+[`consumer/pr-screenshots.mjs`](../consumer/pr-screenshots.mjs) puts screenshots for a pull request's description on a `pr-screenshots` branch of the project (only pictures, a folder per pull request, never merged) and prints the Markdown to paste, so a Claude Code session can show them without anyone dragging images in. New projects have it. In an existing one, copy it to `tools/` and add the rule from the template's `CLAUDE.md` ("A pull request that changes what is on screen…"):
+
+```sh
+cp ../web-kit/consumer/pr-screenshots.mjs tools/
+```
+
 ## When web-kit's consumer files change
 
-The consumer files (`update-vendor.mjs` and `update-vendor.yml`, and for previews `build-site.mjs`, `preview-runtime.js` and `pages.yml`) change rarely. When they do, [`consumer/CHANGELOG.md`](../consumer/CHANGELOG.md) says what changed and whether projects should copy them again (step 1, or step 1 of Adding previews).
+The consumer files (`update-vendor.mjs` and `update-vendor.yml`, for previews `build-site.mjs`, `preview-runtime.js` and `pages.yml`, and `pr-screenshots.mjs`) change rarely. When they do, [`consumer/CHANGELOG.md`](../consumer/CHANGELOG.md) says what changed and whether projects should copy them again (step 1, or step 1 of Adding previews).
 
 ## Troubleshooting
 

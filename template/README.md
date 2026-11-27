@@ -23,7 +23,8 @@ Then go to <http://localhost:8000/>. (Opened as a file, the browser won't load t
 | `js/vendor/` | copies of [web-kit](https://github.com/bremondr/web-kit) modules, at the versions in `vendor.json` |
 | `tests/` | `node --test` tests |
 | `site.json` | what GitHub Pages publishes, and the checks that must pass first |
-| `tools/`, `.github/workflows/` | the site build, previews and module updates (copies of web-kit's consumer files) |
+| `tools/`, `.github/workflows/` | the site build, previews, module updates and screenshots for pull requests (copies of web-kit's consumer files) |
+| branch `pr-screenshots` | only pictures for pull request descriptions, a folder per pull request (`tools/pr-screenshots.mjs`); never merged |
 
 ## Checks
 

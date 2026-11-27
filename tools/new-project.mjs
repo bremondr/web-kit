@@ -21,7 +21,8 @@ export const CONSUMER_FILES = {
   'consumer/update-vendor.yml': '.github/workflows/update-vendor.yml',
   'consumer/build-site.mjs': 'tools/build-site.mjs',
   'consumer/preview-runtime.js': 'tools/preview-runtime.js',
-  'consumer/pages.yml': '.github/workflows/pages.yml'
+  'consumer/pages.yml': '.github/workflows/pages.yml',
+  'consumer/pr-screenshots.mjs': 'tools/pr-screenshots.mjs'
 };
 
 /** Folders of Claude Code skills that every project gets, copied unchanged to the same place. */

@@ -10,7 +10,10 @@
    The branch shares no history with main and holds only pictures: pr-<number>/<file> and a README. The script works
    with git's plumbing and a temporary index, so it never touches the working tree or the branch checked out.
    A file with the same name in the same folder is replaced. `--repo owner/name` sets the repository for the links
-   when the remote's URL doesn't say it. Plain Node 18+ and git, no packages. */
+   when the remote's URL doesn't say it. Plain Node 18+ and git, no packages.
+
+   The original of this script is consumer/pr-screenshots.mjs in bremondr/web-kit, which runs it from there. Projects
+   keep a copy in their tools/ folder; take a new copy from there rather than changing it in a project. */
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -22,8 +25,8 @@ const IMAGE = /\.(png|jpe?g|gif|webp|svg)$/i;
 const README = `# Screenshots for pull requests
 
 This branch holds only pictures for pull request descriptions: \`pr-<number>/\`, one folder per pull request. It shares
-no history with \`main\` and is never merged. \`tools/pr-screenshots.mjs\` on \`main\` adds and removes folders; see
-"Screenshots in pull requests" in \`docs/maintaining.md\`.
+no history with \`main\` and is never merged. \`pr-screenshots.mjs\` (from bremondr/web-kit's \`consumer/\`) adds and
+removes folders: \`node <path>/pr-screenshots.mjs <number> <images...>\`, \`--list\`, \`--remove <numbers...>\`.
 `;
 
 /* ---- pure helpers (tested in tools/pr-screenshots.test.mjs) ---- */
