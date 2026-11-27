@@ -103,6 +103,19 @@ Browser code is tried in `demo/`, not in a project: each page imports its module
    ```
    `--screenshots <dir>` saves a picture of each page and the open panel. On a pull request, CI runs it in Chromium and in WebKit (Safari's engine) and keeps those pictures as `demo-screenshots-chromium` and `demo-screenshots-webkit` on the run's summary page.
 
+### Screenshots in pull requests
+
+A pull request that changes what runs in a browser shows a few screenshots of its demo page in its description. They are kept on the branch `pr-screenshots`, a folder per pull request (`pr-<number>/`). That branch shares no history with `main`, is never merged, and holds only pictures, so no image enters `main`'s history and nobody has to drag images in on github.com. `tools/pr-screenshots.mjs` does it with git alone, without touching the working tree or the branch checked out, so a Claude Code session can do it too:
+
+```sh
+node tools/check-demo.mjs --screenshots shots
+node tools/pr-screenshots.mjs 62 shots/git-store-index-ipad-landscape-light.png shots/git-store-index-phone-dark.png
+```
+
+It pushes them to `pr-62/` and prints Markdown image links to paste into the description (a file with the same name is replaced). Choose a few that show the change, at iPad and phone sizes, light and dark. The full set from CI stays on the run's summary page for 14 days.
+
+`node tools/pr-screenshots.mjs --list` shows the folders, and `--remove 60 61 62` deletes them. Remove a folder only when nobody will look at that pull request's pictures again: its description loses them.
+
 The feedback-kit page sends its issues to this repository with the `demo` label. Create the label once:
 ```sh
 gh label create demo --repo bremondr/web-kit --color c5def5 --description "Sent from a demo page"

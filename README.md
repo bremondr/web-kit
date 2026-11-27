@@ -78,5 +78,7 @@ All three run on every pull request (`.github/workflows/test.yml`); the first tw
 | `site.json` | what web-kit's own Pages site publishes (the demo and the modules) and the checks before it does |
 | `docs/` | the guides above |
 | `tools/check-modules.mjs`, `tools/check-demo.mjs`, `tools/release-notes.mjs`, `tools/releases-due.mjs` | the module check, the demo check, the release notes from a changelog, and which releases a merge makes |
+| `tools/pr-screenshots.mjs` | puts screenshots for a pull request's description on the `pr-screenshots` branch (see [maintaining](docs/maintaining.md#screenshots-in-pull-requests)) |
+| branch `pr-screenshots` | only pictures for pull request descriptions, a folder per pull request; never merged |
 | `tools/new-project.mjs` | makes a new project's folder from `template/` and `consumer/` |
 | `.github/workflows/` | `test.yml` (checks on pull requests, and what merging would release), `release.yml` (releases: on a merge, what the changelogs date; or a tag pushed by hand), `pages.yml` (the demo and the previews, a copy of `consumer/pages.yml`) |
