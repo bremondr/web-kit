@@ -2,7 +2,7 @@
 
 Each version is released as the tag `git-store-kit-vX.Y.Z`. A new major version (the first number) means a project using the kit may need changes; the notes say which.
 
-## 1.2.0 (unreleased)
+## 1.2.0 (2026-11-27)
 
 Reading public repos with no API requests, and default sources. Nothing to change in a project: without the new options a store works as before, and `index: 'auto'` only changes what happens when a repo has an index.
 
