@@ -63,3 +63,13 @@ test('adds folders to the branch, replaces, removes, and leaves the checkout alo
     assert.equal(git(join(dir, 'origin.git'), 'rev-parse', 'main'), git(work, 'rev-parse', 'main'), 'main untouched');
   } finally { rmSync(dir, {recursive: true, force: true}); }
 });
+
+test('--repo takes exactly owner/name', () => {
+  assert.throws(() => parseArgs(['--repo', 'a/b/c', '--list']), /owner\/name/);
+  assert.throws(() => parseArgs(['--repo', 'https://github.com/a/b', '--list']), /owner\/name/);
+  assert.equal(parseArgs(['--repo', 'bremondr/web-kit', '--list']).repo, 'bremondr/web-kit');
+});
+
+test('brackets in a file name are escaped in the Markdown', () => {
+  assert.equal(markdown('me/r', ['pr-6/panel [cs].png']), '![panel \\[cs\\]](' + imageUrl('me/r', 'pr-6/panel [cs].png') + ')');
+});

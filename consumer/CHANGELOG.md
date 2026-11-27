@@ -2,6 +2,11 @@
 
 The consumer files are copied into each project and don't update themselves: `update-vendor.mjs` and `update-vendor.yml` (see `docs/setup-project.md`, step 1), `build-site.mjs`, `preview-runtime.js` and `pages.yml` for previews (see "Adding previews to a project" there), and `pr-screenshots.mjs` for screenshots in pull requests. A new project made with `tools/new-project.mjs` gets the newest of all six. Each entry says whether projects should copy them again.
 
+## 2026-11-28
+
+- `pr-screenshots.mjs`: `--list` and `--remove` work from any folder of the project (before, from a subfolder they saw no folders and removed nothing). `--repo` takes exactly `owner/name`. `[`, `]` and `\` in a file name no longer break the printed Markdown. Re-running with pictures already on the branch says nothing was pushed.
+- Projects that copied `pr-screenshots.mjs` should copy it again ("Screenshots in pull requests" in `docs/setup-project.md`). The other consumer files are unchanged.
+
 ## 2026-11-27
 
 - New, optional: `pr-screenshots.mjs` (to `tools/`). It puts screenshots for a pull request's description in `pr-<number>/` on a `pr-screenshots` branch of the project, which holds only pictures and is never merged, and prints the Markdown to paste. A Claude Code session can then show screenshots without anyone dragging images in on github.com, and no image enters `main`'s history. `--list` and `--remove <numbers...>` tidy the branch. New projects get it and the rule in their `CLAUDE.md`; an existing project copies it and that rule if it wants it ("Screenshots in pull requests" in `docs/setup-project.md`).
