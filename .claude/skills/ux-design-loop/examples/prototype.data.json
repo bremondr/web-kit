@@ -1,0 +1,36 @@
+{
+  "title": "Room booking prototype",
+  "subtitle": "Fictional example. Click the calendar slot to open the booking modal; the hatched block is a placeholder for a later phase.",
+  "lang": "en",
+  "start": "list",
+  "pages": [
+    {
+      "id": "list", "label": "Bookings", "kind": "page", "variant": "desktop", "group": "list", "viewport": { "w": 1200, "h": 780 },
+      "blocks": [
+        { "id": "list_filters", "x": 20, "y": 10, "w": 1160, "h": 50, "title": "Filters",
+          "html": "<div class=\"row\"><span class=\"chip\">building ▾</span><span class=\"chip\">capacity ▾</span><span class=\"chip\">projector ☐</span></div>" },
+        { "id": "list_calendar", "x": 20, "y": 70, "w": 760, "h": 560, "title": "Week calendar",
+          "html": "<div class=\"row\"><b>Room 2.14</b><span class=\"chip\">Mon booked</span><span class=\"chip\" data-open=\"dialog\" style=\"border-color:var(--keep)\">Tue 10:00 free – click</span></div><div class=\"ln m\"></div><div class=\"ln\"></div>" },
+        { "id": "list_detail", "x": 800, "y": 70, "w": 380, "h": 300, "title": "Room detail", "later": true, "phase": "Next release" },
+        { "id": "list_mine", "x": 800, "y": 380, "w": 380, "h": 250, "title": "My bookings",
+          "html": "<div class=\"card\">Tue 10:00 · Room 2.14 · <b data-toast=\"Booking cancelled\">cancel</b></div>" }
+      ]
+    },
+    {
+      "id": "dialog", "label": "Book a room", "kind": "modal", "viewport": { "w": 640, "h": 360 },
+      "blocks": [
+        { "id": "dlg_form", "x": 20, "y": 10, "w": 600, "h": 220, "title": "Booking form",
+          "html": "<div class=\"row\"><span class=\"chip\">Tue 10:00 – 11:00</span></div><div class=\"card\">Title…</div><div class=\"card\">Attendees…</div>" },
+        { "id": "dlg_actions", "x": 380, "y": 270, "w": 240, "h": 60, "title": "Confirm / cancel",
+          "html": "<div class=\"row\"><span class=\"btnlike\" data-close data-toast=\"Room booked\">Book</span><span class=\"chip\" data-close>Cancel</span></div>" }
+      ]
+    },
+    {
+      "id": "list_m", "label": "Bookings", "kind": "page", "variant": "mobile", "group": "list", "viewport": { "w": 390, "h": 844 },
+      "blocks": [
+        { "id": "m_day", "x": 10, "y": 80, "w": 370, "h": 560, "title": "Day agenda",
+          "html": "<div class=\"ln m\"></div><div class=\"ln\"></div><span class=\"chip\" data-open=\"dialog\">Tue 10:00 free</span>" }
+      ]
+    }
+  ]
+}

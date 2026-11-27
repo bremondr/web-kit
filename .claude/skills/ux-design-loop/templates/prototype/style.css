@@ -1,0 +1,21 @@
+/* Layout concept: one device-sized stage showing the current page; modals and drawers overlay it; blocks keep their wireframe positions; "later" blocks are hatched placeholders. */
+.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg[hidden] { display: none; }
+.hotl { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; color: var(--ink-2); }
+.hotl input { width: auto; }
+.stagebox { border: 1px solid var(--line); border-radius: 6px; background: var(--bg); overflow-x: auto; }
+.scaler { position: relative; margin: 0 auto; }
+.stage { position: absolute; left: 0; top: 0; transform-origin: 0 0; background: var(--paper); box-shadow: 0 0 0 1px var(--line); overflow: hidden; }
+.pg, .ov { position: relative; }
+.pb { position: absolute; overflow: hidden; display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--ink); }
+.pb.later { border: 2px dashed var(--later); background: repeating-linear-gradient(135deg, transparent 0 9px, var(--later-bg) 9px 10px); }
+.lt { margin: auto; text-align: center; display: flex; flex-direction: column; gap: 2px; color: var(--later); padding: 8px; }
+.lt small { color: var(--ink-2); }
+.backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.4); display: grid; place-items: center; }
+.backdrop.drawer-side { place-items: stretch end; }
+.ov { background: var(--paper); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 12px 40px rgba(0,0,0,.3); max-width: 100%; max-height: 100%; }
+.ov.drawer { border-radius: 0; }
+[data-goto], [data-open], [data-close], [data-toggle], [data-toast] { cursor: pointer; }
+.hot [data-goto], .hot [data-open], .hot [data-close], .hot [data-toggle], .hot [data-toast] { outline: 2px dashed var(--focus); outline-offset: 2px; }
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--ink); color: var(--paper); padding: 8px 14px; border-radius: 6px; }
+.toast[hidden] { display: none; }

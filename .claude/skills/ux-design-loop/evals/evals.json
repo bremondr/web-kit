@@ -1,0 +1,23 @@
+{
+  "skill_name": "ux-design-loop",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Chci navrhnout obrazovku pro rezervaci zasedacích místností. Mám jen nápad: kalendář týdne, filtry a seznam mých rezervací. Udělej mi wireframe, kde si bloky můžu přesouvat a rozhodnout co ponechat.",
+      "expected_output": "Chooses straight-to-wireframe (single screen) and says so; asks only missing questions via AskUserQuestion; builds data JSON, runs templates/build.py wireframe, publishes with db capability; lang cs; block ids ASCII; no engine rewrite.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "I moved things around in the wireframe and decided. Use 'block 5' as the filters and merge the detail and photos blocks. Then draft issues for the kept ones.",
+      "expected_output": "Reads saved state with ArtifactData get first, checks which tab/blocks 'block 5' can mean and states the interpretation, merges only the two named blocks, pins writes with if_version, re-reads on version_mismatch, does not drop or move unmentioned blocks, lists draft issues by phase/milestone and asks before creating them.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "The wireframe is settled. Build the clickable prototype from it with a mobile variant and a booking modal.",
+      "expected_output": "Summarizes keep/later/dropped, asks for OK, then starts a separate session with a self-contained brief (data file path, kept/later/excluded blocks, pages and modals map, constraints, acceptance checklist, report artifact URL); does not build it in this session or touch the app repo.",
+      "files": []
+    }
+  ]
+}

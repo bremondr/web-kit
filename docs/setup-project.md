@@ -74,13 +74,15 @@ versions in `vendor.json`. Don't edit them here: change the module in web-kit, r
 
 ### Claude Code skills from web-kit
 
-web-kit keeps Claude Code skills that its projects share in [`.claude/skills/`](../.claude/skills/): [`localize`](../.claude/skills/localize/SKILL.md) translates an app or a module (Czech first), the way feedback-kit's Czech texts were done, with a review of every text by the owner. New projects get them from the template. In an existing project, copy the folder as it is, from a clone of web-kit:
+web-kit keeps Claude Code skills that its projects share in [`.claude/skills/`](../.claude/skills/): [`localize`](../.claude/skills/localize/SKILL.md) translates an app or a module (Czech first), the way feedback-kit's Czech texts were done, with a review of every text by the owner; [`ux-design-loop`](../.claude/skills/ux-design-loop/SKILL.md) designs a feature with published Artifacts (workflow map, draggable wireframes, prototype brief) and ships its own templates. New projects get `localize` from the template; copy `ux-design-loop` when a project needs it. In an existing project, copy the folder as it is, from a clone of web-kit:
 
 ```sh
 mkdir -p .claude/skills && cp -R ../web-kit/.claude/skills/localize .claude/skills/
+# and, if the project designs features with it:
+cp -R ../web-kit/.claude/skills/ux-design-loop .claude/skills/
 ```
 
-Claude Code finds it there in the next session. The site build never publishes `.claude/`. Like the consumer files, the copy doesn't update itself: copy it again when web-kit's changes.
+The skills' own [README](../.claude/skills/README.md) covers installing them for yourself in every project, updating and adding one. Claude Code finds it there in the next session. The site build never publishes `.claude/`. Like the consumer files, the copy doesn't update itself: copy it again when web-kit's changes.
 
 ## 6. Give the workflow a token: `VENDOR_PR_TOKEN`
 

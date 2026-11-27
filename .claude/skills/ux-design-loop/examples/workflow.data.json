@@ -1,0 +1,35 @@
+{
+  "title": "Room booking workflow map",
+  "subtitle": "Fictional example. Click any text to edit it, set the pain with the bars, move stages with the arrows, drag features between stages (hold Alt or Ctrl to copy).",
+  "lang": "en",
+  "storage": { "doc": "workflow/main" },
+  "issueBase": "https://tracker.example.com/project/-/issues/",
+  "flagLabel": "Needs approval",
+  "scores": ["Value", "Effort", "Risk"],
+  "phases": [
+    { "id": "ex", "label": "Existing", "color": "c1" },
+    { "id": "mvp", "label": "MVP", "color": "c7" },
+    { "id": "next", "label": "Next release", "color": "c2" },
+    { "id": "idea", "label": "New idea", "color": "c5" }
+  ],
+  "rows": [
+    { "key": "who", "label": "Who", "kind": "text", "placeholder": "Who is involved" },
+    { "key": "today", "label": "Today", "kind": "text", "placeholder": "What happens today" },
+    { "key": "pain", "label": "Pain", "kind": "level", "levels": ["none", "low", "medium", "high"] },
+    { "key": "human", "label": "Stays human", "kind": "text", "cls": "hum", "placeholder": "What must stay manual" },
+    { "kind": "features", "label": "Features" },
+    { "key": "notes", "label": "Notes", "kind": "text", "placeholder": "Your notes" }
+  ],
+  "stages": [
+    { "t": "Find a room", "vals": { "who": "Employee", "today": "Asks colleagues, checks a spreadsheet", "pain": 3, "human": "Choosing the right room" }, "f": ["f1", "f2"] },
+    { "t": "Book it", "vals": { "who": "Employee", "today": "Edits the spreadsheet by hand", "pain": 2, "human": "" }, "f": ["f3", "f4"] },
+    { "t": "Use and release", "vals": { "who": "Employee, facility team", "today": "Nothing: unused bookings stay blocked", "pain": 1, "human": "" }, "f": ["f5"] }
+  ],
+  "features": [
+    { "id": "f1", "ref": "#10", "ph": "mvp", "t": "Free-room search", "d": "Filter by building, capacity and equipment.", "sc": [5, 3, 1] },
+    { "id": "f2", "ref": "", "ph": "next", "t": "Room photos", "d": "Photo and equipment list per room.", "sc": [2, 2, 1] },
+    { "id": "f3", "ref": "#11", "ph": "mvp", "t": "Booking dialog", "d": "Time range, title, attendees.", "sc": [5, 2, 1] },
+    { "id": "f4", "ref": "", "ph": "idea", "t": "Recurring bookings", "d": "Repeat weekly for N weeks.", "sc": [3, 3, 2], "flag": true },
+    { "id": "f5", "ref": "", "ph": "next", "t": "Auto-release unused rooms", "d": "Release a booking 15 min after start when nobody checked in.", "sc": [4, 4, 3] }
+  ]
+}
