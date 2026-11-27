@@ -76,3 +76,7 @@ On macOS and Linux: `ln -s /path/to/web-kit/.claude/skills/ux-design-loop ~/.cla
 ## Adding a skill to web-kit
 
 Put it in `.claude/skills/<name>/` with a `SKILL.md` whose frontmatter has `name` and `description`, and add a row to the table above. Write everything in English, with nothing specific to one project. Add it to `SKILL_DIRS` in `tools/new-project.mjs` only if every new project should start with it.
+
+## Changing a skill
+
+The repository is the source; copies in projects and in `~/.claude/skills/` are made from it. Change the skill here: one issue and one pull request per change, as in the repository's `CLAUDE.md`. Tell Claude what you want in plain words, or edit the files yourself; a skill's own README says which file does what (for example [`ux-design-loop`](ux-design-loop/README.md#changing-it)). Merging a skill change releases nothing. Afterwards copy the skill again wherever you use it (see [Updating](#updating)). Don't edit a copy in a project or in your user folder and leave it there: the next copy from web-kit overwrites it.

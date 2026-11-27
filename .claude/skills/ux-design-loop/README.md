@@ -82,4 +82,37 @@ Open `wireframe.html` in a browser to look at it. Saving to the shared database 
 
 ## Changing it
 
-Change a template's `engine.js`, `style.css` or `template.html` once and every later run gets the change. Keep the templates generic: no project names, and the block list stays in data. Update `references/data-schemas.md` when the data format changes, and keep the examples building.
+Change the skill in web-kit, not in a copy: the repository is the source and copies are made from it.
+
+**Ask Claude.** In a session on a web-kit clone, say what you want in plain words: "make the phase panel collapsible", "add a tablet example", "the revision step should also list blocks I moved but did not decide". Say whether it is about how Claude behaves or how the pages look. Claude edits the files below, opens an issue and a pull request, and you merge (see the web-kit `CLAUDE.md`).
+
+**Or edit by hand.** Which file to change:
+
+| You want to change | Edit |
+| --- | --- |
+| What Claude does, in which order, its rules and pitfalls, the trigger description | `SKILL.md` |
+| How saved state is read and written, how the prototype brief and comments are handled | `references/persistence.md`, `references/handoff-and-comments.md` |
+| What a page can do (controls, decisions, panels, texts in English and Czech) | `templates/<kind>/engine.js` |
+| How a page looks | `templates/<kind>/style.css`, `templates/base.css` (shared) |
+| The page skeleton (headings, panels) | `templates/<kind>/template.html` |
+| The data format | the template's `engine.js`, `references/data-schemas.md` and `examples/<kind>.data.json` together |
+| The example content | `examples/` |
+
+Rules:
+
+- Keep the templates generic: no project names, and the block list stays in data.
+- Never rename ids that saved state uses (block ids, `els`, `phases`, `feats`) without a migration note in `references/persistence.md`; a renamed key loses the saved decisions of everyone who already used the page.
+- Keep every example building.
+- Everything is written in English; only the pages' own UI texts have a Czech version.
+
+**Test before the pull request:**
+
+```sh
+python templates/build.py wireframe examples/wireframe.data.json /tmp/wireframe.html
+python templates/build.py workflow examples/workflow.data.json /tmp/workflow.html
+python templates/build.py prototype examples/prototype.data.json /tmp/prototype.html
+```
+
+Open each result in a browser: the wireframe, workflow and prototype should load without errors and react to clicks and drags. Changes to saving or to reading state back need a real Artifact: ask Claude to publish the example once, move a block, and read it back. For behaviour changes, run `/ux-design-loop` on a prompt from `evals/evals.json` and check the answer against its `expected_output`.
+
+**After the merge,** copy the skill again into the places you use it, as described in [Installing a skill](../README.md#installing-a-skill), and start a new Claude Code session.
