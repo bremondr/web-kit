@@ -29,7 +29,7 @@ no history with \`main\` and is never merged. \`pr-screenshots.mjs\` (from bremo
 removes folders: \`node <path>/pr-screenshots.mjs <number> <images...>\`, \`--list\`, \`--remove <numbers...>\`.
 `;
 
-/* ---- pure helpers (tested in tools/pr-screenshots.test.mjs) ---- */
+/* ---- pure helpers (tested in pr-screenshots.test.mjs, next to this file) ---- */
 
 /** "owner/name" from a remote's URL (https, ssh, or a proxy URL ending in /owner/name), or null. */
 export function repoOfRemote(url){
@@ -42,7 +42,7 @@ export const imageUrl = (repo, path) => `https://github.com/${repo}/blob/${BRANC
 
 /** Markdown for the pull request: one image per file, named after the file. */
 export function markdown(repo, paths){
-  return paths.map(p => `![${basename(p).replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ')}](${imageUrl(repo, p)})`).join('\n');
+  return paths.map(p => `![${basename(p).replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').replace(/[[\]\\]/g, '\\$&')}](${imageUrl(repo, p)})`).join('\n');
 }
 
 /** Checks the arguments: {mode: 'add', number, files} | {mode: 'remove', numbers} | {mode: 'list'}, plus repo. Throws with a sentence. */
@@ -50,7 +50,7 @@ export function parseArgs(argv){
   const args = [...argv];
   let repo = null;
   const k = args.indexOf('--repo');
-  if (k >= 0){ repo = args[k + 1]; args.splice(k, 2); if (!repoOfRemote('/' + (repo || ''))) throw new Error('--repo needs owner/name'); }
+  if (k >= 0){ repo = args[k + 1]; args.splice(k, 2); if (!/^[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/.test(repo || '')) throw new Error('--repo needs owner/name'); }
   const number = v => { if (!/^[1-9]\d{0,6}$/.test(v || '')) throw new Error(`Not a pull request number: ${v}`); return Number(v); };
   if (args[0] === '--list') return {mode: 'list', repo};
   if (args[0] === '--remove'){
@@ -111,6 +111,8 @@ function folders(cwd){
 
 function main(argv, cwd = process.cwd()){
   const opts = parseArgs(argv);
+  // git from the top of the work tree, so paths on the branch (pr-<number>/…) don't depend on the folder it's run from
+  cwd = gitIn(cwd)('rev-parse', '--show-toplevel');
   if (opts.mode === 'list'){ const f = folders(cwd); console.log(f.length ? f.join('\n') : `No folders on ${BRANCH}.`); return; }
   if (opts.mode === 'remove'){
     const changed = commitToBranch(cwd, `Remove the screenshots of ${opts.numbers.map(n => '#' + n).join(', ')}`,
@@ -121,11 +123,12 @@ function main(argv, cwd = process.cwd()){
   const repo = opts.repo || repoOfRemote(gitIn(cwd)('remote', 'get-url', 'origin'));
   if (!repo) throw new Error('The remote doesn\'t say which GitHub repository this is: add --repo owner/name');
   const paths = opts.files.map(f => `pr-${opts.number}/${basename(f)}`);
-  commitToBranch(cwd, `Screenshots for #${opts.number}`, git => opts.files.forEach((f, k) => {
+  const changed = commitToBranch(cwd, `Screenshots for #${opts.number}`, git => opts.files.forEach((f, k) => {
     const sha = git('hash-object', '-w', resolve(f));
     git('update-index', '--add', '--cacheinfo', `100644,${sha},${paths[k]}`);
   }));
-  console.log(`Pushed ${paths.length} picture(s) to ${BRANCH}/pr-${opts.number}/. For the pull request's description:\n`);
+  console.log(changed ? `Pushed ${paths.length} picture(s) to ${BRANCH}/pr-${opts.number}/. For the pull request's description:\n`
+    : `These picture(s) are already on ${BRANCH}/pr-${opts.number}/; nothing was pushed. For the pull request's description:\n`);
   console.log(markdown(repo, paths));
 }
 

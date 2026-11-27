@@ -260,8 +260,10 @@ Don't edit the copies; take new ones when [`consumer/CHANGELOG.md`](../consumer/
 [`consumer/pr-screenshots.mjs`](../consumer/pr-screenshots.mjs) puts screenshots for a pull request's description on a `pr-screenshots` branch of the project (only pictures, a folder per pull request, never merged) and prints the Markdown to paste, so a Claude Code session can show them without anyone dragging images in. New projects have it. In an existing one, copy it to `tools/` and add the rule from the template's `CLAUDE.md` ("A pull request that changes what is on screen…"):
 
 ```sh
-cp ../web-kit/consumer/pr-screenshots.mjs tools/
+curl -fsSL https://raw.githubusercontent.com/bremondr/web-kit/main/consumer/pr-screenshots.mjs -o tools/pr-screenshots.mjs
 ```
+
+In PowerShell, use `curl.exe` instead of `curl`, as in step 1.
 
 ## When web-kit's consumer files change
 
