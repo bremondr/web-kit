@@ -55,7 +55,7 @@ Read with `ArtifactComments` when the user asks or when woken. For each thread a
 
 ## Step 5 – Prototype handoff
 
-When the user says the wireframe is settled (or nearly all blocks are decided): read the final state, summarize keep / later / dropped per tab and the phase plan, **ask for the OK**, then start a separate session (`start_session`, `user_asked`) with a **self-contained brief** per `references/handoff-and-comments.md`. The prototype is a third artifact built with `templates/prototype/` (pages, modals, drawers, click-through via `data-goto` / `data-open` / `data-close` / `data-toast`, mobile/desktop switch, hatched placeholders for `later`). The session reports the artifact URL, not source.
+When the user says the wireframe is settled (or nearly all blocks are decided): read the final state, summarize keep / later / dropped per tab and the phase plan, **ask for the OK**, then start a separate session (`start_session`, `user_asked`) with a **self-contained brief** per `references/handoff-and-comments.md`. The prototype is a third artifact built with `templates/prototype/` (pages, modals, drawers, click-through via `data-goto` / `data-open` / `data-close` / `data-toast`, mobile/desktop switch, hatched placeholders for `later`). Controls that are not part of the app design (screen switch, viewport, versions, reset) live only in the template's dashed amber "Prototype only" bar; alternatives to compare (e.g. detail as block or as modal) are `versions` with `when` on pages or blocks. The session reports the artifact URL, not source.
 
 ## Step 6 – Issues (when the user wants them; can run before or after the prototype)
 
